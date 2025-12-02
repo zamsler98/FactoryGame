@@ -24,4 +24,12 @@ public class BuildingManager
         var building = new Building(type, x, y);
         return grid.PlaceBuilding(building, x, y);
     }
+
+    /// <summary>
+    /// Removes the building at the specified grid cell, if any.
+    /// </summary>
+    public bool RemoveBuilding(int x, int y)
+    {
+        return grid.RemoveBuilding(x, y);
+    }
 }

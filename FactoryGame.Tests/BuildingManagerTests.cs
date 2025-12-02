@@ -39,4 +39,27 @@ public class BuildingManagerTests
         var result = manager.TryPlaceBuilding(BuildingType.Factory, 100, 100);
         Assert.That(result, Is.False);
     }
+
+    [Test]
+    public void RemoveBuilding_Succeeds_WhenCellIsOccupied()
+    {
+        var grid = new Grid();
+        var manager = new BuildingManager(grid);
+        manager.TryPlaceBuilding(BuildingType.Factory, 3, 3);
+        var result = manager.RemoveBuilding(3, 3);
+        Assert.That(result, Is.True);
+        Assert.That(grid.IsCellOccupied(3, 3), Is.False);
+        Assert.That(grid.GetBuilding(3, 3), Is.Null);
+    }
+
+    [Test]
+    public void RemoveBuilding_Fails_WhenCellIsEmpty()
+    {
+        var grid = new Grid();
+        var manager = new BuildingManager(grid);
+        var result = manager.RemoveBuilding(4, 4);
+        Assert.That(result, Is.False);
+        Assert.That(grid.IsCellOccupied(4, 4), Is.False);
+        Assert.That(grid.GetBuilding(4, 4), Is.Null);
+    }
 }

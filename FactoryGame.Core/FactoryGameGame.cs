@@ -152,6 +152,17 @@ namespace FactoryGame.Core
                 int gridY = mouseState.Y / Grid.CellSize;
                 buildingManager.TryPlaceBuilding(selectedBuildingType, gridX, gridY);
             }
+            // Mouse input for deletion
+            if (mouseState.RightButton == ButtonState.Pressed && previousMouseState.RightButton == ButtonState.Released)
+            {
+                int gridX = mouseState.X / Grid.CellSize;
+                int gridY = mouseState.Y / Grid.CellSize;
+                if (grid.GetBuilding(gridX, gridY) != null)
+                {
+                    buildingManager.RemoveBuilding(gridX, gridY);
+                }
+            }
+
             previousMouseState = mouseState;
 
             // TODO: Add your update logic here
