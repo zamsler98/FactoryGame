@@ -48,4 +48,21 @@ public class Grid
     {
         return cells[x, y];
     }
+
+    /// <summary>
+    /// Removes the building at the specified cell, if any.
+    /// </summary>
+    public bool RemoveBuilding(int x, int y)
+    {
+        if (x < 0 || x >= Width || y < 0 || y >= Height)
+        {
+            return false;
+        }
+        if (cells[x, y] == null)
+        {
+            return false;
+        }
+        cells[x, y] = null;
+        return true;
+    }
 }
