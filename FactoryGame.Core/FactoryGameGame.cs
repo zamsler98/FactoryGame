@@ -20,11 +20,13 @@ namespace FactoryGame.Core
 
         private SpriteBatch spriteBatch;
         private Player player;
-        // Remove any initialization from constructor or Initialize. Only initialize in LoadContent.
-
         private SpriteFont debugFont;
 
-
+        // Building placement system
+        private Grid grid;
+        private BuildingManager buildingManager;
+        private BuildingType selectedBuildingType = BuildingType.Factory;
+        private MouseState previousMouseState;
 
         /// <summary>
         /// Indicates if the game is running on a mobile platform.
@@ -35,6 +37,7 @@ namespace FactoryGame.Core
         /// Indicates if the game is running on a desktop platform.
         /// </summary>
         public readonly static bool IsDesktop = OperatingSystem.IsMacOS() || OperatingSystem.IsLinux() || OperatingSystem.IsWindows();
+
 
         /// <summary>
         /// Initializes a new instance of the game. Configures platform-specific settings, 
@@ -96,7 +99,12 @@ namespace FactoryGame.Core
             player = new Player(new Vector2(0, 0));
             player.LoadContent(GraphicsDevice);
             debugFont = Content.Load<SpriteFont>("Fonts/DebugFont");
+
+            // Initialize grid and building manager
+            grid = new Grid();
+            buildingManager = new BuildingManager(grid);
         }
+
 
 
         /// <summary>
@@ -112,11 +120,33 @@ namespace FactoryGame.Core
                 || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
 
+            // Building type selection
+            var keyboardState = Keyboard.GetState();
+            if (keyboardState.IsKeyDown(Keys.F))
+            {
+                selectedBuildingType = BuildingType.Factory;
+            }
+            else if (keyboardState.IsKeyDown(Keys.C))
+            {
+                selectedBuildingType = BuildingType.Conveyor;
+            }
+
+            // Mouse input for placement
+            var mouseState = Mouse.GetState();
+            if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released)
+            {
+                int gridX = mouseState.X / Grid.CellSize;
+                int gridY = mouseState.Y / Grid.CellSize;
+                buildingManager.TryPlaceBuilding(selectedBuildingType, gridX, gridY);
+            }
+            previousMouseState = mouseState;
+
             // TODO: Add your update logic here
             player?.Update(gameTime);
 
             base.Update(gameTime);
         }
+
 
 
         /// <summary>
@@ -130,13 +160,34 @@ namespace FactoryGame.Core
             // Clears the screen with the MonoGame orange color before drawing.
             GraphicsDevice.Clear(Color.Black);
 
-            // TODO: Add your drawing code here
             spriteBatch.Begin();
+
+            // Draw grid
+            for (int x = 0; x < Grid.Width; x++)
+            {
+                for (int y = 0; y < Grid.Height; y++)
+                {
+                    var rect = new Rectangle(x * Grid.CellSize, y * Grid.CellSize, Grid.CellSize, Grid.CellSize);
+                    spriteBatch.Draw(Texture2DHelper.GetWhiteTexture(GraphicsDevice), rect, Color.DarkGray * 0.2f);
+
+                    var building = grid.GetBuilding(x, y);
+                    if (building != null)
+                    {
+                        Color color = building.Type == BuildingType.Factory ? Color.Blue : Color.Green;
+                        spriteBatch.Draw(Texture2DHelper.GetWhiteTexture(GraphicsDevice), rect, color * 0.7f);
+                    }
+                }
+            }
+
+            // Draw selected building type info
+            spriteBatch.DrawString(debugFont, $"Selected: {selectedBuildingType}", new Vector2(10, 10), Color.White);
+
             player?.Draw(spriteBatch);
             spriteBatch.End();
 
             base.Draw(gameTime);
         }
+
 
 
 
