@@ -20,4 +20,8 @@
     <Using Include="NUnit.Framework" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\FactoryGame.Core\FactoryGame.Core.csproj" />
+  </ItemGroup>
+
 </Project>
