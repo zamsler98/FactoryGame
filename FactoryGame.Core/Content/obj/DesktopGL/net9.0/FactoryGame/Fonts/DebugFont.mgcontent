@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PipelineBuildEvent xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <SourceFile>/mnt/e/zamsl/Documents/ProgrammingProjects/FactoryGame/FactoryGame.Core/Content/DebugFont.spritefont</SourceFile>
+  <SourceTime>2025-11-30T23:59:22.176854-06:00</SourceTime>
+  <DestFile>/mnt/e/zamsl/Documents/ProgrammingProjects/FactoryGame/FactoryGame.Core/Content/bin/DesktopGL/FactoryGame/Fonts/DebugFont.xnb</DestFile>
+  <DestTime>2025-12-01T00:04:50.6635999-06:00</DestTime>
+  <Importer>FontDescriptionImporter</Importer>
+  <ImporterTime>2025-10-20T09:25:32-05:00</ImporterTime>
+  <Processor>FontDescriptionProcessor</Processor>
+  <ProcessorTime>2025-10-20T09:25:32-05:00</ProcessorTime>
+  <Parameters>
+    <Key>PremultiplyAlpha</Key>
+    <Value>True</Value>
+  </Parameters>
+  <Parameters>
+    <Key>TextureFormat</Key>
+    <Value>Compressed</Value>
+  </Parameters>
+  <Dependencies />
+  <BuildAsset />
+  <BuildOutput />
+</PipelineBuildEvent>
