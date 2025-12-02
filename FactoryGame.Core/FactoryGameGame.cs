@@ -28,6 +28,9 @@ namespace FactoryGame.Core
         private BuildingType selectedBuildingType = BuildingType.Factory;
         private MouseState previousMouseState;
 
+        // Grid overlay system
+        private GridOverlay gridOverlay;
+
         /// <summary>
         /// Indicates if the game is running on a mobile platform.
         /// </summary>
@@ -103,6 +106,10 @@ namespace FactoryGame.Core
             // Initialize grid and building manager
             grid = new Grid();
             buildingManager = new BuildingManager(grid);
+
+            // Initialize grid overlay
+            gridOverlay = new GridOverlay(GraphicsDevice);
+            gridOverlay.LoadContent();
         }
 
 
@@ -129,6 +136,12 @@ namespace FactoryGame.Core
             else if (keyboardState.IsKeyDown(Keys.C))
             {
                 selectedBuildingType = BuildingType.Conveyor;
+            }
+
+            // Grid overlay toggle
+            if (keyboardState.IsKeyDown(Keys.G))
+            {
+                gridOverlay.ToggleVisibility();
             }
 
             // Mouse input for placement
@@ -169,10 +182,23 @@ namespace FactoryGame.Core
                 {
                     var rect = new Rectangle(x * Grid.CellSize, y * Grid.CellSize, Grid.CellSize, Grid.CellSize);
                     spriteBatch.Draw(Texture2DHelper.GetWhiteTexture(GraphicsDevice), rect, Color.DarkGray * 0.2f);
+                }
+            }
 
+            // Draw grid overlay with hover highlighting
+            var mouseState = Mouse.GetState();
+            var mousePosition = new Vector2(mouseState.X, mouseState.Y);
+            gridOverlay.Draw(spriteBatch, grid, mousePosition);
+
+            // Draw buildings
+            for (int x = 0; x < Grid.Width; x++)
+            {
+                for (int y = 0; y < Grid.Height; y++)
+                {
                     var building = grid.GetBuilding(x, y);
                     if (building != null)
                     {
+                        var rect = new Rectangle(x * Grid.CellSize, y * Grid.CellSize, Grid.CellSize, Grid.CellSize);
                         Color color = building.Type == BuildingType.Factory ? Color.Blue : Color.Green;
                         spriteBatch.Draw(Texture2DHelper.GetWhiteTexture(GraphicsDevice), rect, color * 0.7f);
                     }
