@@ -26,10 +26,12 @@ namespace FactoryGame.Core
         private Grid grid;
         private BuildingManager buildingManager;
         private BuildingType selectedBuildingType = BuildingType.Factory;
-        private MouseState previousMouseState;
 
         // Grid overlay system
         private GridOverlay gridOverlay;
+
+        // Input management
+        private InputManager inputManager;
 
         /// <summary>
         /// Indicates if the game is running on a mobile platform.
@@ -110,6 +112,9 @@ namespace FactoryGame.Core
             // Initialize grid overlay
             gridOverlay = new GridOverlay(GraphicsDevice);
             gridOverlay.LoadContent();
+
+            // Initialize input manager
+            inputManager = new InputManager();
         }
 
 
@@ -122,51 +127,52 @@ namespace FactoryGame.Core
         /// </param>
         protected override void Update(GameTime gameTime)
         {
+// Update input manager
+            inputManager.Update();
+
             // Exit the game if the Back button (GamePad) or Escape key (Keyboard) is pressed.
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed
-                || Keyboard.GetState().IsKeyDown(Keys.Escape))
+                || inputManager.IsExitPressed())
                 Exit();
 
             // Building type selection
-            var keyboardState = Keyboard.GetState();
-            if (keyboardState.IsKeyDown(Keys.F))
+            if (inputManager.IsKeyDown(Keys.F))
             {
                 selectedBuildingType = BuildingType.Factory;
             }
-            else if (keyboardState.IsKeyDown(Keys.C))
+            else if (inputManager.IsKeyDown(Keys.C))
             {
                 selectedBuildingType = BuildingType.Conveyor;
             }
 
             // Grid overlay toggle
-            if (keyboardState.IsKeyDown(Keys.G))
+            if (inputManager.IsKeyPressed(Keys.G))
             {
-                gridOverlay.ToggleVisibility();
+                gridOverlay?.ToggleVisibility();
             }
 
             // Mouse input for placement
-            var mouseState = Mouse.GetState();
-            if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released)
+            if (inputManager.IsLeftMouseClicked())
             {
-                int gridX = mouseState.X / Grid.CellSize;
-                int gridY = mouseState.Y / Grid.CellSize;
-                buildingManager.TryPlaceBuilding(selectedBuildingType, gridX, gridY);
+                var mousePosition = inputManager.GetMousePosition();
+                int gridX = (int)mousePosition.X / Grid.CellSize;
+                int gridY = (int)mousePosition.Y / Grid.CellSize;
+                buildingManager?.TryPlaceBuilding(selectedBuildingType, gridX, gridY);
             }
             // Mouse input for deletion
-            if (mouseState.RightButton == ButtonState.Pressed && previousMouseState.RightButton == ButtonState.Released)
+            if (inputManager.IsRightMouseClicked())
             {
-                int gridX = mouseState.X / Grid.CellSize;
-                int gridY = mouseState.Y / Grid.CellSize;
-                if (grid.GetBuilding(gridX, gridY) != null)
+                var mousePosition = inputManager.GetMousePosition();
+                int gridX = (int)mousePosition.X / Grid.CellSize;
+                int gridY = (int)mousePosition.Y / Grid.CellSize;
+                if (grid?.GetBuilding(gridX, gridY) != null)
                 {
-                    buildingManager.RemoveBuilding(gridX, gridY);
+                    buildingManager?.RemoveBuilding(gridX, gridY);
                 }
             }
 
-            previousMouseState = mouseState;
-
             // TODO: Add your update logic here
-            player?.Update(gameTime);
+            player?.Update(gameTime, inputManager);
 
             base.Update(gameTime);
         }
@@ -197,9 +203,8 @@ namespace FactoryGame.Core
             }
 
             // Draw grid overlay with hover highlighting
-            var mouseState = Mouse.GetState();
-            var mousePosition = new Vector2(mouseState.X, mouseState.Y);
-            gridOverlay.Draw(spriteBatch, grid, mousePosition);
+            var mousePosition = inputManager.GetMousePosition();
+            gridOverlay.Draw(spriteBatch!, grid!, mousePosition);
 
             // Draw buildings
             for (int x = 0; x < Grid.Width; x++)

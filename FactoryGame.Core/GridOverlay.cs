@@ -7,13 +7,14 @@ namespace FactoryGame.Core;
 /// <summary>
 /// Handles rendering of the grid overlay with hover highlighting.
 /// </summary>
-public class GridOverlay
+public class GridOverlay : IDisposable
 {
     private readonly GraphicsDevice graphicsDevice;
     private bool isVisible = true;
     private readonly Color gridColor = Color.White * 0.3f;
     private readonly Color highlightColor = Color.Yellow * 0.5f;
-    private Texture2D whiteTexture;
+    private Texture2D? whiteTexture;
+    private bool disposed = false;
 
     /// <summary>
     /// Gets or sets whether the grid overlay is visible.
@@ -110,7 +111,41 @@ public class GridOverlay
                 Grid.CellSize,
                 Grid.CellSize
             );
-            spriteBatch.Draw(whiteTexture, highlightRect, highlightColor);
+            spriteBatch.Draw(whiteTexture!, highlightRect, highlightColor);
         }
+    }
+
+    /// <summary>
+    /// Releases all resources used by GridOverlay.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases the unmanaged resources used by the GridOverlay and optionally releases the managed resources.
+    /// </summary>
+    /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                whiteTexture?.Dispose();
+                whiteTexture = null;
+            }
+            disposed = true;
+        }
+    }
+
+    /// <summary>
+    /// Destructor for GridOverlay.
+    /// </summary>
+    ~GridOverlay()
+    {
+        Dispose(false);
     }
 }

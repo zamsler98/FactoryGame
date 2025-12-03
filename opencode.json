@@ -1,0 +1,11 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "mcp": {
+        "jira": {
+            "enabled": true,
+            "type": "remote",
+            "url": "https://mcp.atlassian.com/v1/sse",
+            "enabled": true
+        },
+    },
+}

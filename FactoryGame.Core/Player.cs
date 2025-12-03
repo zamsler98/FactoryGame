@@ -9,11 +9,13 @@ namespace FactoryGame.Core;
 /// <summary>
 /// Represents the player character and handles movement and rendering.
 /// </summary>
-public class Player
+public class Player : IDisposable
 {
-    private Texture2D texture;
+    private Texture2D? texture;
     private Vector2 position;
-    private readonly float speed = 200f; // pixels per second
+    private readonly float speed = GameConstants.PlayerSpeed;
+    private const int TextureSize = GameConstants.PlayerTextureSize;
+    private bool disposed = false;
 
     /// <summary>
     /// Initializes a new instance of the Player class.
@@ -29,8 +31,8 @@ public class Player
     /// </summary>
     public void LoadContent(GraphicsDevice graphicsDevice)
     {
-        texture = new Texture2D(graphicsDevice, 64, 64);
-        Color[] data = new Color[64 * 64];
+        texture = new Texture2D(graphicsDevice, TextureSize, TextureSize);
+        Color[] data = new Color[TextureSize * TextureSize];
         for (int i = 0; i < data.Length; i++)
         {
             data[i] = Color.White;
@@ -43,32 +45,19 @@ public class Player
     /// <summary>
     /// Updates the player's position based on keyboard input.
     /// </summary>
-    public void Update(GameTime gameTime)
+    public void Update(GameTime gameTime, InputManager inputManager)
     {
-        var keyboardState = Keyboard.GetState();
-        var movement = Vector2.Zero;
-
-        if (keyboardState.IsKeyDown(Keys.Left) || keyboardState.IsKeyDown(Keys.A))
-        {
-            movement.X -= 1;
-        }
-        if (keyboardState.IsKeyDown(Keys.Right) || keyboardState.IsKeyDown(Keys.D))
-        {
-            movement.X += 1;
-        }
-        if (keyboardState.IsKeyDown(Keys.Up) || keyboardState.IsKeyDown(Keys.W))
-        {
-            movement.Y -= 1;
-        }
-        if (keyboardState.IsKeyDown(Keys.Down) || keyboardState.IsKeyDown(Keys.S))
-        {
-            movement.Y += 1;
-        }
+        var movement = inputManager.GetMovementInput();
 
         if (movement != Vector2.Zero)
         {
-            movement.Normalize();
-            position += movement * speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            var newPosition = position + movement * speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            
+            // Boundary checking - keep player within game window
+            newPosition.X = Math.Max(0, Math.Min(newPosition.X, GameConstants.WindowWidth - TextureSize));
+            newPosition.Y = Math.Max(0, Math.Min(newPosition.Y, GameConstants.WindowHeight - TextureSize));
+            
+            position = newPosition;
         }
     }
 
@@ -81,5 +70,39 @@ public class Player
         {
             spriteBatch.Draw(texture, position, Color.Red);
         }
+    }
+
+    /// <summary>
+    /// Releases all resources used by the Player.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases the unmanaged resources used by the Player and optionally releases the managed resources.
+    /// </summary>
+    /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposed)
+        {
+            if (disposing)
+            {
+                texture?.Dispose();
+                texture = null;
+            }
+            disposed = true;
+        }
+    }
+
+    /// <summary>
+    /// Destructor for Player.
+    /// </summary>
+    ~Player()
+    {
+        Dispose(false);
     }
 }
