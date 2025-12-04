@@ -1,4 +1,5 @@
 ﻿using FactoryGame.Core;
+using System;
 
 internal class Program
 {
@@ -8,7 +9,8 @@ internal class Program
     /// </summary>
     /// <param name="args">Command-line arguments passed to the application.</param>
     private static void Main(string[] args)
-    {
+    // {
+        Console.WriteLine("Starting FactoryGame...");
         using var game = new FactoryGameGame();
         game.Run();
     }
