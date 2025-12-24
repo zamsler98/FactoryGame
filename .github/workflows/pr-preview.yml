@@ -3,7 +3,6 @@ name: CI PR Preview
 on:
   pull_request:
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,10 +17,11 @@ concurrency:
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out PR code
         uses: actions/checkout@v4
-        
+
       - name: Set up Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -45,12 +45,15 @@ jobs:
           mkdir -p dist
           cp index.html dist/
           cp target/wasm32-unknown-unknown/release/factorygame.wasm dist/
-        #  Add additional asset copying here if necessary
+
+      # ✅ REQUIRED
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: dist
 
       - name: Deploy preview to GitHub Pages
         id: deploy
