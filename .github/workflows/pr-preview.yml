@@ -1,0 +1,49 @@
+name: CI PR Preview
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR code
+        uses: actions/checkout@v4
+        
+      - name: Set up Rust toolchain
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: stable
+
+      - name: Install wasm32 target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Build WASM (release)
+        run: cargo build --target wasm32-unknown-unknown --release
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Lint (clippy)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Prepare deployment directory
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+          cp target/wasm32-unknown-unknown/release/factorygame.wasm dist/
+        #  Add additional asset copying here if necessary
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Deploy preview to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
