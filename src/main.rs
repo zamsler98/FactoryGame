@@ -65,6 +65,8 @@ impl Default for World {
 const GRID_SIZE: usize = 32;
 const TILE_SIZE: f32 = 32.0;
 
+const PAN_SPEED: f32 = 0.3;
+
 struct Camera {
     offset: Vec2,
     zoom: f32,
@@ -108,7 +110,7 @@ async fn main() {
         if is_mouse_button_down(MouseButton::Left) {
             if let Some(start) = drag_start {
                 let curr = vec2(mouse_position().0, mouse_position().1);
-                camera.offset = camera_start + (curr - start) / camera.zoom;
+                camera.offset = camera_start + (curr - start) / camera.zoom * PAN_SPEED;
             }
         } else {
             drag_start = None;
