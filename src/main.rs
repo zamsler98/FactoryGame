@@ -1,6 +1,6 @@
 //! Main entry point for FactoryGame with custom ECS, grid world, and interactive grid rendering.
 use macroquad::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 type EntityId = u32;
 
@@ -53,6 +53,12 @@ impl World {
         self.positions.insert(e, pos);
         self.renderables.insert(e, renderable);
         e
+    }
+}
+
+impl Default for World {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
