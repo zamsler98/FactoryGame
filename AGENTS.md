@@ -2,9 +2,11 @@
 
 ## Build, Lint, and Test Commands
 - Build the project: `cargo build`
-- Lint and check style: `cargo clippy` and `cargo fmt -- --check`
+- Lint and check style: `cargo clippy --all-targets -- -D warnings` and `cargo fmt -- --check`
 - Run all tests: `cargo test`
 - Run a single test: `cargo test <test_name>` (exact or substring)
+
+**REQUIRED:** All code must be formatted with `cargo fmt` and pass `cargo clippy --all-targets -- -D warnings` with zero warnings/errors before any commit or pull request. Pull requests that are not lint-clean will not be accepted.
 
 ## Code Style Guidelines
 - Use `rustfmt` (`cargo fmt`) for formatting; adhere to standard Rust style.
@@ -19,3 +21,10 @@
 - Do not include `AGENTS.md`-specific bots or instructions in code.
 
 _No Cursor or Copilot rules detected as of this writing._
+
+
+## Branching Strategy
+- All new features and large changes should be worked on in a dedicated feature branch (e.g., `feature/factory-ecs-core`).
+- Use descriptive branch names: `feature/automation-pipeline`, `feature/inventory-ui`, etc.
+- Merge feature branches into `main` only via pull requests, ensuring all formatting and lint checks pass before merging.
+
