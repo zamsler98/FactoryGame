@@ -63,9 +63,9 @@ impl Default for World {
 }
 
 const GRID_SIZE: usize = 32;
-const TILE_SIZE: f32 = 32.0;
+const TILE_SIZE: f32 = 64.0;
 
-const PAN_SPEED: f32 = 0.3;
+const PAN_SPEED: f32 = 0.01;
 
 struct Camera {
     offset: Vec2,
