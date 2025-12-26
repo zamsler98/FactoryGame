@@ -1,0 +1,56 @@
+# Rust/Cargo
+/target/
+debug/
+**/*.rs.bk
+*.pdb
+**/mutants.out*/
+
+# WASM build (ignore generated packages if using wasm-pack)
+/pkg/
+
+# VSCode IDE
+.vscode/
+
+# JetBrains IDEs (CLion, IntelliJ, RustRover...)
+.idea/
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/aws.xml
+.idea/**/contentModel.xml
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+.idea/**/gradle.xml
+.idea/**/libraries
+.idea/**/sonarlint*
+.idea/**/mongoSettings.xml
+.idea/**/copilot.data.migration.*.xml
+cmake-build-*/
+out/
+
+# Other Editor Files
+*.swp
+*.swo
+*.swn
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# NPM/node_modules (if JS glue is used)
+node_modules/
+package-lock.json
+
+# Output WASM artifacts (ignore if strictly generated; otherwise, remove line)
+# *.wasm
+
+# Note: If you want to ignore factorygame.wasm, uncomment the below; right now, it is tracked.
+# /factorygame.wasm
+
