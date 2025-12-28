@@ -1,5 +1,12 @@
 //! Main entry point for FactoryGame with custom ECS, grid world, and interactive grid rendering.
-use macroquad::prelude::*;
+// use macroquad::input::is_mobile; // Removed: not supported in macroquad 0.4.14+use macroquad::prelude::*;
+// Explicit macroquad imports to ensure all are present
+use macroquad::prelude::{
+    clear_background, draw_rectangle, draw_rectangle_lines, draw_text, is_mouse_button_down,
+    is_mouse_button_pressed, mouse_position, mouse_wheel, next_frame, screen_height, screen_width,
+    set_camera, set_default_camera, touches, vec2, Camera2D, Color, MouseButton, TouchPhase, Vec2,
+    DARKGRAY, DARKGREEN, GRAY, LIGHTGRAY, ORANGE, RED, YELLOW,
+};
 use std::collections::HashMap;
 
 type EntityId = u32;
@@ -63,9 +70,8 @@ impl Default for World {
 }
 
 const GRID_SIZE: usize = 32;
-const TILE_SIZE: f32 = 64.0;
-
-const PAN_SPEED: f32 = 0.01;
+const TILE_SIZE: f32 = 32.0;
+const PAN_SPEED: f32 = 0.3;
 
 struct Camera {
     offset: Vec2,
@@ -75,7 +81,6 @@ struct Camera {
 #[macroquad::main("FactoryGame")]
 async fn main() {
     let mut world = World::new();
-    // Simple grid of ground/resource tiles (use entities for now)
     for y in 0..GRID_SIZE {
         for x in 0..GRID_SIZE {
             let tile_type = if (x + y) % 8 == 0 {
@@ -98,32 +103,90 @@ async fn main() {
     let mut selected: Option<Position> = None;
     let mut drag_start: Option<Vec2> = None;
     let mut camera_start: Vec2 = Vec2::ZERO;
+    let mut pinch_start: Option<(u64, u64)> = None;
+    let mut last_pinch_distance = 0.0;
+    let mut touch_drag_id: Option<u64> = None;
+    let mut last_touch_pos = Vec2::ZERO;
 
     loop {
         clear_background(LIGHTGRAY);
 
-        // -- Handle camera pan (drag background to move)
-        if is_mouse_button_pressed(MouseButton::Left) {
-            drag_start = Some(vec2(mouse_position().0, mouse_position().1));
-            camera_start = camera.offset;
-        }
-        if is_mouse_button_down(MouseButton::Left) {
-            if let Some(start) = drag_start {
-                let curr = vec2(mouse_position().0, mouse_position().1);
-                camera.offset = camera_start + (curr - start) / camera.zoom * PAN_SPEED;
+        let touches = touches();
+        let mobile = !touches.is_empty(); // Detect mobile/touch if touches exist
+                                          // -------- Pan/Drag: Mouse or Touch
+        if !mobile {
+            // Desktop mouse pan
+            if is_mouse_button_pressed(MouseButton::Left) {
+                drag_start = Some(vec2(mouse_position().0, mouse_position().1));
+                camera_start = camera.offset;
+            }
+            if is_mouse_button_down(MouseButton::Left) {
+                if let Some(start) = drag_start {
+                    let curr = vec2(mouse_position().0, mouse_position().1);
+                    camera.offset = camera_start + (curr - start) / camera.zoom * PAN_SPEED;
+                }
+            } else {
+                drag_start = None;
             }
         } else {
-            drag_start = None;
+            // -- Touch drag pan
+            if touches.len() == 1 {
+                let t = &touches[0];
+                if t.phase == TouchPhase::Started {
+                    touch_drag_id = Some(t.id);
+                    last_touch_pos = t.position;
+                    camera_start = camera.offset;
+                } else if t.phase == TouchPhase::Moved && touch_drag_id == Some(t.id) {
+                    let curr = t.position;
+                    let delta = curr - last_touch_pos;
+                    // Fix horizontal scroll inversion: use delta.x as is
+                    camera.offset = camera_start + vec2(delta.x, delta.y) / camera.zoom * PAN_SPEED;
+                } else if t.phase == TouchPhase::Ended {
+                    touch_drag_id = None;
+                }
+            }
+            // -- Pinch to zoom
+            if touches.len() == 2 {
+                let t0 = &touches[0];
+                let t1 = &touches[1];
+                let pinch_distance = (t0.position - t1.position).length();
+                if pinch_start.is_none() {
+                    pinch_start = Some((t0.id, t1.id));
+                    last_pinch_distance = pinch_distance;
+                } else {
+                    let diff = pinch_distance - last_pinch_distance;
+                    camera.zoom *= 1.0 + (diff) * 0.002; // scale factor tweak
+                    camera.zoom = camera.zoom.clamp(0.5, 3.0);
+                    last_pinch_distance = pinch_distance;
+                }
+            } else {
+                pinch_start = None;
+            }
         }
-        // -- Zoom with wheel/pinch
-        camera.zoom *= 1.0 + mouse_wheel().1 * 0.05;
-        camera.zoom = camera.zoom.clamp(0.5, 3.0);
 
-        // -- Tap/click to select tile
-        if is_mouse_button_pressed(MouseButton::Right) {
-            let (mx, my) = mouse_position();
-            let wx = (mx / camera.zoom - camera.offset.x) / TILE_SIZE;
-            let wy = (my / camera.zoom - camera.offset.y) / TILE_SIZE;
+        // -------- Zoom: Mouse wheel (Desktop only)
+        if !mobile {
+            camera.zoom *= 1.0 + mouse_wheel().1 * 0.05;
+            camera.zoom = camera.zoom.clamp(0.5, 3.0);
+        }
+
+        // -------- Tile selection: Mouse or Touch Tap
+        let select_tile = if !mobile {
+            is_mouse_button_pressed(MouseButton::Right)
+        } else {
+            // Touch tap: one touch ended rapidly
+            touches.iter().any(|t| t.phase == TouchPhase::Ended)
+        };
+        if select_tile {
+            let (mx, my) = if !mobile {
+                mouse_position()
+            } else if let Some(t) = touches.last() {
+                (t.position.x, t.position.y)
+            } else {
+                (0.0, 0.0)
+            };
+            let wx: f32 = (mx / camera.zoom - camera.offset.x) / TILE_SIZE;
+            let wy: f32 = (my / camera.zoom - camera.offset.y) / TILE_SIZE;
             if wx >= 0.0 && wy >= 0.0 {
                 let gx = wx.floor() as usize;
                 let gy = wy.floor() as usize;
@@ -181,7 +244,7 @@ async fn main() {
             );
         }
         draw_text(
-            "L-drag: pan | Scroll: zoom | R-click: select tile",
+            "L-drag: pan | Scroll/pinch: zoom | R-click/tap: select tile",
             10.0,
             screen_height() - 25.0,
             22.0,
@@ -191,3 +254,5 @@ async fn main() {
         next_frame().await;
     }
 }
+
+// ...rest unchanged...
