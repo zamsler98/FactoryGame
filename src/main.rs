@@ -8,6 +8,8 @@ use macroquad::prelude::{
     DARKGRAY, DARKGREEN, GRAY, LIGHTGRAY, ORANGE, RED, YELLOW,
 };
 
+use std::collections::HashMap;
+
 type EntityId = u32;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -139,7 +141,7 @@ async fn main() {
                     let curr = t.position;
                     let delta = curr - last_touch_pos;
                     // Fix horizontal scroll inversion: use delta.x as is
-                    camera.offset = camera_start + vec2(-delta.x, delta.y) / camera.zoom * PAN_SPEED;
+                    camera.offset = camera_start + vec2(delta.x, delta.y) / camera.zoom * PAN_SPEED;
                 } else if t.phase == TouchPhase::Ended {
                     touch_drag_id = None;
                 }
