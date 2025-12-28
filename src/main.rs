@@ -108,6 +108,7 @@ async fn main() {
     let mut last_pinch_distance = 0.0;
     let mut touch_drag_id: Option<u64> = None;
     let mut last_touch_pos = Vec2::ZERO;
+    let mut last_touch_delta = Vec2::ZERO;
 
     loop {
         clear_background(LIGHTGRAY);
@@ -140,8 +141,12 @@ async fn main() {
                 } else if t.phase == TouchPhase::Moved && touch_drag_id == Some(t.id) {
                     let curr = t.position;
                     let delta = curr - last_touch_pos;
-                    // Fix horizontal scroll inversion: use delta.x as is
-                    camera.offset = camera_start + vec2(delta.x, delta.y) / camera.zoom * PAN_SPEED;
+                    // Record delta for debugging on device
+                    last_touch_delta = delta;
+                    // Fix horizontal scroll inversion: invert delta.x for touch
+                    camera.offset =
+                        camera_start + vec2(-delta.x, delta.y) / camera.zoom * PAN_SPEED;
+                    last_touch_pos = curr;
                 } else if t.phase == TouchPhase::Ended {
                     touch_drag_id = None;
                 }
@@ -250,6 +255,18 @@ async fn main() {
             screen_height() - 25.0,
             22.0,
             GRAY,
+        );
+
+        // Debug: show last touch delta on screen for mobile testing
+        draw_text(
+            &format!(
+                "Touch delta: x={:.2} y={:.2}",
+                last_touch_delta.x, last_touch_delta.y
+            ),
+            screen_width() - 220.0,
+            30.0,
+            20.0,
+            DARKGRAY,
         );
 
         next_frame().await;
