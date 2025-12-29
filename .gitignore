@@ -11,6 +11,8 @@ debug/
 # VSCode IDE
 .vscode/
 
+oc_logs/
+
 # JetBrains IDEs (CLion, IntelliJ, RustRover...)
 .idea/
 .idea/**/workspace.xml
