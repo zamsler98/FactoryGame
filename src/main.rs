@@ -94,7 +94,7 @@ async fn main() {
                     y as f32 * TILE_SIZE,
                     TILE_SIZE - 1.0,
                     TILE_SIZE - 1.0,
-                    if (x + y) % 2 == 0 { GRAY } else { LIGHTGRAY },
+                    GRAY,
                 );
             }
         }
