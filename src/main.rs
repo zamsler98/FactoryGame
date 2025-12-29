@@ -31,7 +31,7 @@ async fn main() {
 
             if let Some(last_pos) = last_touches.get(&touch.id) {
                 let delta = pos - *last_pos;
-                camera.target -= delta / zoom;
+                camera.target -= vec2(delta.x, -delta.y) / zoom;
             }
 
             last_pinch_distance = None;
