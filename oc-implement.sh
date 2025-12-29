@@ -110,7 +110,7 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
 
         if [[ -z "$EXISTING_PR" || "$EXISTING_PR" == "null" ]]; then
             log "No existing PR found. Creating new pull request..."
-            PR_URL=$(gh pr create --base main --head "$CURRENT_BRANCH" --title "$PR_TITLE" --body "$PR_BODY" 2>>"$LOG_FILE")
+            PR_URL=$(gh pr create --base main --head "$CURRENT_BRANCH" --title "$PR_TITLE" --body "$PR_BODY" 2 --draft >>"$LOG_FILE")
             log "Pull request created: $PR_URL"
         else
             PR_NUMBER=$(echo "$EXISTING_PR" | jq -r '.number')
