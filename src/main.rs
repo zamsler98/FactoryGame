@@ -48,10 +48,7 @@ async fn main() {
                 zoom *= zoom_delta;
                 zoom = zoom.clamp(0.2, 5.0);
 
-                camera.zoom = vec2(
-                    zoom / screen_width() * 2.0,
-                    -zoom / screen_height() * 2.0,
-                );
+                camera.zoom = vec2(zoom / screen_width() * 2.0, -zoom / screen_height() * 2.0);
             }
 
             last_pinch_distance = Some(current_distance);
@@ -80,10 +77,7 @@ async fn main() {
                 zoom *= 1.1_f32.powf(scroll);
                 zoom = zoom.clamp(0.2, 5.0);
 
-                camera.zoom = vec2(
-                    zoom / screen_width() * 2.0,
-                    -zoom / screen_height() * 2.0,
-                );
+                camera.zoom = vec2(zoom / screen_width() * 2.0, -zoom / screen_height() * 2.0);
             }
         }
 
@@ -100,11 +94,7 @@ async fn main() {
                     y as f32 * TILE_SIZE,
                     TILE_SIZE - 1.0,
                     TILE_SIZE - 1.0,
-                    if (x + y) % 2 == 0 {
-                        GRAY
-                    } else {
-                        LIGHTGRAY
-                    },
+                    if (x + y) % 2 == 0 { GRAY } else { LIGHTGRAY },
                 );
             }
         }
