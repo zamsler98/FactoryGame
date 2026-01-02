@@ -1,7 +1,9 @@
-name: CI PR Preview
+name: CI PR Preview & Prod
 
 on:
   pull_request:
+    branches: [main]
+  push:
     branches: [main]
 
 permissions:
@@ -13,9 +15,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-test-deploy:
+  preview:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out PR code
         uses: actions/checkout@v4
@@ -48,3 +50,41 @@ jobs:
         uses: rossjrw/pr-preview-action@v1
         with:
           source-dir: ./dist
+
+  deploy:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: wasm32-unknown-unknown
+
+      - name: Build WASM (release)
+        run: cargo build --target wasm32-unknown-unknown --release
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Lint (clippy)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Prepare deployment directory
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+          cp target/wasm32-unknown-unknown/release/factorygame.wasm dist/
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
