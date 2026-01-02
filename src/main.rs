@@ -36,9 +36,7 @@ async fn main() {
             let pos = touch.position;
 
             // Record touch start if this is the first frame for this touch id
-            if !touch_start.contains_key(&touch.id) {
-                touch_start.insert(touch.id, pos);
-            }
+            touch_start.entry(touch.id).or_insert(pos);
 
             if let Some(last_pos) = prev_touches.get(&touch.id) {
                 let delta = pos - *last_pos;
@@ -75,9 +73,7 @@ async fn main() {
 
             // Record starts for both touches if not present
             for touch in &touches {
-                if !touch_start.contains_key(&touch.id) {
-                    touch_start.insert(touch.id, touch.position);
-                }
+                touch_start.entry(touch.id).or_insert(touch.position);
             }
         }
 
