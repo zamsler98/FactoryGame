@@ -66,13 +66,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
-name = "factorygame"
-version = "0.1.0"
-dependencies = [
- "macroquad",
-]
-
-[[package]]
 name = "fdeflate"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -105,6 +98,26 @@ checksum = "2e57e16b3fe8ff4364c0661fdaac543fb38b29ea9bc9c2f45612d90adf931d2b"
 dependencies = [
  "hashbrown",
  "ttf-parser",
+]
+
+[[package]]
+name = "game_app"
+version = "0.1.0"
+dependencies = [
+ "game_core",
+ "game_logic",
+ "macroquad",
+]
+
+[[package]]
+name = "game_core"
+version = "0.1.0"
+
+[[package]]
+name = "game_logic"
+version = "0.1.0"
+dependencies = [
+ "game_core",
 ]
 
 [[package]]

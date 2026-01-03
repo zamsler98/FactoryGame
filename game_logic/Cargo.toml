@@ -1,0 +1,11 @@
+[package]
+name = "game_logic"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "game_logic"
+path = "src/lib.rs"
+
+[dependencies]
+game_core = { path = "../game_core" }
