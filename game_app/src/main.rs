@@ -24,7 +24,7 @@ async fn main() {
         // Build a platform-agnostic InputFrame from Macroquad input APIs.
         let mut input = InputFrame::default();
 
-        // Keyboard / gamepad movement mapping (WASD / arrow keys)
+        // --- Desktop keyboard/gamepad movement mapping (WASD / arrow keys) ---
         if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
             input.move_x -= 1.0;
         }
@@ -38,20 +38,64 @@ async fn main() {
             input.move_y += 1.0;
         }
 
-        // Normalize diagonal movement
+        // Normalize diagonal movement for keyboard
         let mag = (input.move_x * input.move_x + input.move_y * input.move_y).sqrt();
         if mag > 1.0 {
             input.move_x /= mag;
             input.move_y /= mag;
         }
 
-        // Action (space / touch)
+        // Action (space / mouse click)
         input.action = is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left);
 
+        // --- Mobile-friendly touch controls (virtual joystick + action button) ---
+        let screen_w = screen_width();
+        let screen_h = screen_height();
+        let joystick_base = vec2(screen_w * 0.2, screen_h * 0.75);
+        let joystick_radius = 50.0;
+        let action_center = vec2(screen_w * 0.85, screen_h * 0.75);
+        let action_radius = 44.0;
+
+        let mut touch_pointer: Option<Vec2> = None;
+        let mut joystick_vec = vec2(0.0, 0.0);
+        let mut action_pressed = false;
+
+        for t in touches() {
+            let tp = t.position;
+            touch_pointer = Some(tp);
+
+            // If the touch is on the left half, treat it as joystick input
+            if tp.x < screen_w * 0.5 {
+                let delta = tp - joystick_base;
+                let dist = delta.length();
+                let clamped = if dist > joystick_radius {
+                    delta.normalize() * joystick_radius
+                } else {
+                    delta
+                };
+                joystick_vec = clamped / joystick_radius; // normalized [-1..1]
+            }
+
+            // If the touch is on the right half near the action button, mark action
+            if (tp - action_center).length() <= action_radius * 1.5 {
+                action_pressed = true;
+            }
+        }
+
+        // If we have joystick input from touch, override keyboard movement
+        if joystick_vec.length() > 0.001 {
+            input.move_x = joystick_vec.x;
+            input.move_y = joystick_vec.y;
+        }
+
+        // Prefer touch action if present
+        if action_pressed {
+            input.action = true;
+        }
+
         // Pointer / touch: prefer first touch if present, otherwise mouse.
-        if let Some(touch) = touches().first() {
-            // touches() yields Touch objects; `position` is a tuple field
-            input.pointer = Some((touch.position.x, touch.position.y));
+        if let Some(tp) = touch_pointer {
+            input.pointer = Some((tp.x, tp.y));
         } else if is_mouse_button_down(MouseButton::Left) {
             input.pointer = Some(mouse_position());
         }
@@ -74,6 +118,39 @@ async fn main() {
                 Color::new(r, g, b, 1.0),
             );
         }
+
+        // Draw mobile HUD: virtual joystick and action button
+        // (only visible if touch is available or on mobile)
+        let base_color = Color::new(1.0, 1.0, 1.0, 0.08);
+        let knob_color = Color::new(1.0, 1.0, 1.0, 0.18);
+        draw_circle(
+            joystick_base.x,
+            joystick_base.y,
+            joystick_radius + 8.0,
+            base_color,
+        );
+        let knob_pos = joystick_base + joystick_vec * joystick_radius;
+        draw_circle(knob_pos.x, knob_pos.y, 28.0, knob_color);
+
+        // Action button
+        let action_color = if action_pressed {
+            Color::new(1.0, 0.4, 0.2, 0.9)
+        } else {
+            Color::new(1.0, 1.0, 1.0, 0.12)
+        };
+        draw_circle(
+            action_center.x,
+            action_center.y,
+            action_radius,
+            action_color,
+        );
+        draw_text(
+            "A",
+            action_center.x - 6.0,
+            action_center.y + 8.0,
+            26.0,
+            WHITE,
+        );
 
         // HUD: draw simple pointer marker
         if let Some((px, py)) = input.pointer {
