@@ -40,7 +40,7 @@ fn multi_tile_place_and_overlap() {
 
 #[test]
 fn rotation_bounds() {
-    let mut g = TileGrid::new(5, 5);
+    let g = TileGrid::new(5, 5);
     let spec = BuildingSpec {
         spec_id: 3,
         size: Size2 { w: 3, h: 2 },
