@@ -26,7 +26,7 @@ async fn main() {
         zoom: vec2(1.0 / screen_width() * 2.0, -1.0 / screen_height() * 2.0),
         ..Default::default()
     };
-    let mut zoom: f32 = 1.0;
+    let zoom: f32 = 1.0;
 
     // Touch tap detection state (for mobile taps -> action)
     let mut prev_touches: HashMap<u64, Vec2> = HashMap::new();
