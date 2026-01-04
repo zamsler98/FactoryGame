@@ -58,8 +58,6 @@ async fn main() {
         // Mobile touch: collect touches for pointer and tap detection (no joystick)
         let mut touch_pointer: Option<Vec2> = None;
         let touches_now = touches();
-        let screen_w = screen_width();
-        let screen_h = screen_height();
 
         // Record current touches, set pointer to first touch
         for t in &touches_now {
