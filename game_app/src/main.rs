@@ -6,9 +6,11 @@
 //! Only this crate depends on `macroquad`.
 //!
 
-use game_core::EntityType;
 use game_logic::{update_world, InputFrame};
 use macroquad::prelude::*;
+use std::collections::HashMap;
+
+mod render_grid;
 
 #[macroquad::main("FactoryGame - Macroquad")]
 async fn main() {
@@ -17,6 +19,11 @@ async fn main() {
     world.spawn_player(200.0, 200.0);
     world.spawn_enemy(500.0, 200.0);
     world.spawn_enemy(500.0, 400.0);
+
+    // Touch tap detection state (for mobile taps -> action)
+    let mut prev_touches: HashMap<u64, Vec2> = HashMap::new();
+    let mut touch_start: HashMap<u64, Vec2> = HashMap::new();
+    const TAP_MAX_MOVEMENT: f32 = 10.0;
 
     loop {
         let dt = get_frame_time();
@@ -48,123 +55,95 @@ async fn main() {
         // Action (space / mouse click)
         input.action = is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left);
 
-        // --- Mobile-friendly touch controls (virtual joystick + action button) ---
-        let screen_w = screen_width();
-        let screen_h = screen_height();
-        let joystick_base = vec2(screen_w * 0.2, screen_h * 0.75);
-        let joystick_radius = 50.0;
-        let action_center = vec2(screen_w * 0.85, screen_h * 0.75);
-        let action_radius = 44.0;
-
+        // Mobile touch: collect touches for pointer and tap detection (no joystick)
         let mut touch_pointer: Option<Vec2> = None;
-        let mut joystick_vec = vec2(0.0, 0.0);
-        let mut action_pressed = false;
+        let touches_now = touches();
 
-        for t in touches() {
+        // Record current touches, set pointer to first touch
+        for t in &touches_now {
             let tp = t.position;
             touch_pointer = Some(tp);
+            touch_start.entry(t.id).or_insert(tp);
+        }
 
-            // If the touch is on the left half, treat it as joystick input
-            if tp.x < screen_w * 0.5 {
-                let delta = tp - joystick_base;
-                let dist = delta.length();
-                let clamped = if dist > joystick_radius {
-                    delta.normalize() * joystick_radius
-                } else {
-                    delta
-                };
-                joystick_vec = clamped / joystick_radius; // normalized [-1..1]
+        // Detect ended touches as taps (small movement)
+        {
+            // build a set of current touch ids
+            let mut current_ids: HashMap<u64, ()> = HashMap::new();
+            for t in &touches_now {
+                current_ids.insert(t.id, ());
             }
 
-            // If the touch is on the right half near the action button, mark action
-            if (tp - action_center).length() <= action_radius * 1.5 {
-                action_pressed = true;
+            // Collect ended ids from touch_start where id is not in current_ids
+            let ended_ids: Vec<u64> = touch_start
+                .keys()
+                .filter(|id| !current_ids.contains_key(id))
+                .copied()
+                .collect();
+
+            for id in ended_ids {
+                if let Some(start_pos) = touch_start.get(&id) {
+                    // end_pos is the last known position from prev_touches if available
+                    let end_pos = prev_touches.get(&id).cloned().unwrap_or(*start_pos);
+
+                    if start_pos.distance(end_pos) < TAP_MAX_MOVEMENT {
+                        // treat as tap
+                        input.action = true;
+                        // Also set pointer to tap end for selection
+                        input.pointer = Some((end_pos.x, end_pos.y));
+                    }
+                }
+
+                // cleanup
+                touch_start.remove(&id);
+                prev_touches.remove(&id);
             }
         }
 
-        // If we have joystick input from touch, override keyboard movement
-        if joystick_vec.length() > 0.001 {
-            input.move_x = joystick_vec.x;
-            input.move_y = joystick_vec.y;
-        }
-
-        // Prefer touch action if present
-        if action_pressed {
-            input.action = true;
+        // Update prev_touches to current touches for the next frame
+        prev_touches.clear();
+        for t in &touches_now {
+            prev_touches.insert(t.id, t.position);
         }
 
         // Pointer / touch: prefer first touch if present, otherwise mouse.
-        if let Some(tp) = touch_pointer {
-            input.pointer = Some((tp.x, tp.y));
-        } else if is_mouse_button_down(MouseButton::Left) {
-            input.pointer = Some(mouse_position());
+        if input.pointer.is_none() {
+            if let Some(tp) = touch_pointer {
+                input.pointer = Some((tp.x, tp.y));
+            } else if is_mouse_button_down(MouseButton::Left) {
+                input.pointer = Some(mouse_position());
+            }
         }
 
         // Update game state using platform-agnostic logic
         update_world(&mut world, &input, dt);
 
         // --- Rendering (platform-specific) ---
-        clear_background(Color::from_rgba(20, 20, 20, 255));
-
-        for e in &world.entities {
-            let (r, g, b) = match e.ty {
-                EntityType::Player => (50.0 / 255.0, 120.0 / 255.0, 220.0 / 255.0),
-                EntityType::Enemy => (220.0 / 255.0, 60.0 / 255.0, 60.0 / 255.0),
-            };
-            draw_circle(
-                e.transform.x,
-                e.transform.y,
-                e.radius,
-                Color::new(r, g, b, 1.0),
-            );
-        }
-
-        // Draw mobile HUD: virtual joystick and action button
-        // (only visible if touch is available or on mobile)
-        let base_color = Color::new(1.0, 1.0, 1.0, 0.08);
-        let knob_color = Color::new(1.0, 1.0, 1.0, 0.18);
-        draw_circle(
-            joystick_base.x,
-            joystick_base.y,
-            joystick_radius + 8.0,
-            base_color,
-        );
-        let knob_pos = joystick_base + joystick_vec * joystick_radius;
-        draw_circle(knob_pos.x, knob_pos.y, 28.0, knob_color);
-
-        // Action button
-        let action_color = if action_pressed {
-            Color::new(1.0, 0.4, 0.2, 0.9)
-        } else {
-            Color::new(1.0, 1.0, 1.0, 0.12)
+        // We'll render the grid (top-left aligned) and then other HUD on top.
+        let grid_snapshot = game_logic::placement::TileGridSnapshot {
+            width: 128,
+            height: 128,
+            instances: Vec::new(),
         };
-        draw_circle(
-            action_center.x,
-            action_center.y,
-            action_radius,
-            action_color,
-        );
-        draw_text(
-            "A",
-            action_center.x - 6.0,
-            action_center.y + 8.0,
-            26.0,
-            WHITE,
-        );
+
+        // Determine hovered tile from pointer
+        let hover_tile = if let Some((sx, sy)) = input.pointer {
+            let tx = (sx / crate::render_grid::TILE_PX).floor() as i32;
+            let ty = (sy / crate::render_grid::TILE_PX).floor() as i32;
+            Some(game_core::TilePos { x: tx, y: ty })
+        } else {
+            None
+        };
+
+        crate::render_grid::draw_grid(&grid_snapshot, hover_tile);
 
         // HUD: draw simple pointer marker
         if let Some((px, py)) = input.pointer {
             draw_circle(px, py, 6.0, Color::new(1.0, 1.0, 0.0, 1.0));
         }
 
-        // Simple text showing instructions
-        draw_text(
-            "WASD / Arrow keys to move, Space / Click to action",
-            20.0,
-            20.0,
-            20.0,
-            WHITE,
-        );
+        // Simple text showing instructions (no mobile joystick)
+        draw_text("Click or tap to select tiles", 20.0, 20.0, 20.0, WHITE);
 
         next_frame().await
     }

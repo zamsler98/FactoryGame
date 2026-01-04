@@ -72,6 +72,8 @@ pub fn update_world(world: &mut World, input: &InputFrame, dt: f32) {
 
 /// Optional: an abstract drawing trait that UI/app can implement if desired.
 /// game_logic can provide high-level debug draw calls using this trait (optional).
+pub mod placement;
+
 pub trait DrawBackend {
     fn draw_circle(&mut self, x: f32, y: f32, radius: f32, rgba: (f32, f32, f32, f32));
 }
