@@ -10,6 +10,9 @@ use game_core::EntityType;
 use game_logic::{update_world, InputFrame};
 use macroquad::prelude::*;
 
+mod render_grid;
+use crate::render_grid::TILE_PX;
+
 #[macroquad::main("FactoryGame - Macroquad")]
 async fn main() {
     // Create and populate the game world (game_core)
@@ -103,21 +106,26 @@ async fn main() {
         // Update game state using platform-agnostic logic
         update_world(&mut world, &input, dt);
 
-        // --- Rendering (platform-specific) ---
-        clear_background(Color::from_rgba(20, 20, 20, 255));
+            // --- Rendering (platform-specific) ---
+        // We'll render the grid (top-left aligned) and then other HUD on top.
+        let grid_snapshot = {
+            // For now create a tiny empty snapshot; eventually this will come from game_logic's grid.
+            // We'll construct a snapshot sized 128x128 with no instances when none present.
+            let mut snap = game_logic::placement::TileGridSnapshot { width: 128, height: 128, instances: Vec::new() };
+            // TODO: integrate real grid snapshot from world when world contains one.
+            snap
+        };
 
-        for e in &world.entities {
-            let (r, g, b) = match e.ty {
-                EntityType::Player => (50.0 / 255.0, 120.0 / 255.0, 220.0 / 255.0),
-                EntityType::Enemy => (220.0 / 255.0, 60.0 / 255.0, 60.0 / 255.0),
-            };
-            draw_circle(
-                e.transform.x,
-                e.transform.y,
-                e.radius,
-                Color::new(r, g, b, 1.0),
-            );
-        }
+        // Determine hovered tile from pointer
+        let hover_tile = if let Some((sx, sy)) = input.pointer {
+            let tx = (sx / crate::render_grid::TILE_PX).floor() as i32;
+            let ty = (sy / crate::render_grid::TILE_PX).floor() as i32;
+            Some(game_core::TilePos { x: tx, y: ty })
+        } else {
+            None
+        };
+
+        crate::render_grid::draw_grid(&grid_snapshot, hover_tile);
 
         // Draw mobile HUD: virtual joystick and action button
         // (only visible if touch is available or on mobile)

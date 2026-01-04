@@ -6,6 +6,9 @@ use std::fmt;
 
 pub type EntityId = u32;
 
+mod grid;
+pub use grid::*;
+
 #[derive(Clone, Debug)]
 pub struct Transform {
     pub x: f32,
