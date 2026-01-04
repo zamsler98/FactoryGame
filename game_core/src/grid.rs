@@ -177,8 +177,8 @@ impl TileGrid {
 fn inst_size_from_spec(inst: &BuildingInstance) -> Size2 {
     match inst.spec_id {
         1 => Size2 { w: 1, h: 1 }, // conveyor
-        2 => Size2 { w: 2, h: 2 }, // furnace
-        3 => Size2 { w: 3, h: 3 }, // assembler
+        2 => Size2 { w: 1, h: 1 }, // miner
+        3 => Size2 { w: 1, h: 1 }, // smelter
         _ => Size2 { w: 1, h: 1 },
     }
 }

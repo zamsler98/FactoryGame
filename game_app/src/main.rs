@@ -36,6 +36,10 @@ async fn main() {
     // Previous mouse pos for mouse-drag panning
     let mut prev_mouse: Option<Vec2> = None;
 
+    // Selected building and rotation state (persist across frames)
+    let mut selected_spec_id: u32 = 1; // 1=conveyor,2=miner,3=smelter
+    let mut selected_rotation: game_core::Rotation = game_core::Rotation::R0;
+
     loop {
         let dt = get_frame_time();
 
@@ -157,18 +161,7 @@ async fn main() {
             }
         }
 
-        // Update game state using platform-agnostic logic
-        update_world(&mut world, &input, dt);
-
-        // --- Rendering (platform-specific) ---
-        // We'll render a large grid snapshot (1000x1000 for this feature) and then other HUD on top.
-        let grid_snapshot = game_logic::placement::TileGridSnapshot {
-            width: 1000,
-            height: 1000,
-            instances: Vec::new(),
-        };
-
-        // Compute visible tile range by converting screen corners to world coords
+        // Determine hovered tile from pointer by converting to world coords
         fn screen_to_world_vec2(screen_pos: Vec2, camera: &Camera2D, zoom: f32) -> Vec2 {
             let screen_center = vec2(screen_width() / 2.0, screen_height() / 2.0);
             let relative = screen_pos - screen_center;
@@ -177,7 +170,6 @@ async fn main() {
             vec2(world_x, world_y)
         }
 
-        // Determine hovered tile from pointer by converting to world coords
         let hover_tile = if let Some((sx, sy)) = input.pointer {
             let screen = vec2(sx, sy);
             let world = screen_to_world_vec2(screen, &camera, zoom);
@@ -187,6 +179,85 @@ async fn main() {
         } else {
             None
         };
+
+        // Update game state using platform-agnostic logic
+        update_world(&mut world, &input, dt);
+
+        // Handle HUD input and placement (screen-space)
+        // Toolbar geometry
+        let hud_margin = 16.0;
+        let btn_size = 56.0;
+        let spacing = 12.0;
+        let screen_h = screen_height();
+        let base_y = screen_h - hud_margin - btn_size;
+        let mut hud_consumed = false;
+
+        let btn1_x = hud_margin;
+        let btn2_x = btn1_x + btn_size + spacing;
+        let btn3_x = btn2_x + btn_size + spacing;
+        let rotate_x = btn3_x + btn_size + spacing;
+
+        if input.action {
+            if let Some((px, py)) = input.pointer {
+                // check HUD buttons first (point-in-rect)
+                let in_btn1 = px >= btn1_x
+                    && px <= btn1_x + btn_size
+                    && py >= base_y
+                    && py <= base_y + btn_size;
+                let in_btn2 = px >= btn2_x
+                    && px <= btn2_x + btn_size
+                    && py >= base_y
+                    && py <= base_y + btn_size;
+                let in_btn3 = px >= btn3_x
+                    && px <= btn3_x + btn_size
+                    && py >= base_y
+                    && py <= base_y + btn_size;
+                let in_rotate = px >= rotate_x
+                    && px <= rotate_x + btn_size
+                    && py >= base_y
+                    && py <= base_y + btn_size;
+
+                if in_btn1 {
+                    selected_spec_id = 1;
+                    hud_consumed = true;
+                } else if in_btn2 {
+                    selected_spec_id = 2;
+                    hud_consumed = true;
+                } else if in_btn3 {
+                    selected_spec_id = 3;
+                    hud_consumed = true;
+                } else if in_rotate {
+                    // cycle rotation
+                    selected_rotation = match selected_rotation {
+                        game_core::Rotation::R0 => game_core::Rotation::R90,
+                        game_core::Rotation::R90 => game_core::Rotation::R180,
+                        game_core::Rotation::R180 => game_core::Rotation::R270,
+                        game_core::Rotation::R270 => game_core::Rotation::R0,
+                    };
+                    hud_consumed = true;
+                }
+
+                // If not consumed by HUD, attempt placement on grid tile
+                if !hud_consumed {
+                    if let Some(tile) = hover_tile {
+                        let spec = game_core::BuildingSpec {
+                            spec_id: selected_spec_id,
+                            size: game_core::Size2 { w: 1, h: 1 },
+                        };
+                        let _ = game_logic::placement::try_place_building(
+                            &mut world.tile_grid,
+                            &spec,
+                            tile,
+                            selected_rotation,
+                        );
+                    }
+                }
+            }
+        }
+
+        // --- Rendering (platform-specific) ---
+        // Use real grid snapshot from the world's tile grid
+        let grid_snapshot = game_logic::placement::grid_snapshot(&world.tile_grid);
 
         // compute visible bounds in tile coordinates (handle inverted Y from camera)
         let top_left_world = screen_to_world_vec2(vec2(0.0, 0.0), &camera, zoom);
@@ -209,6 +280,48 @@ async fn main() {
         // Update camera zoom into camera struct (so world drawing respects zoom if changed later)
         camera.zoom = vec2(zoom / screen_width() * 2.0, -zoom / screen_height() * 2.0);
 
+        // --- HUD draw (screen-space)
+        // Draw buttons
+        let conveyor_color = Color::new(0.8, 0.8, 0.8, 0.95);
+        draw_rectangle(btn1_x, base_y, btn_size, btn_size, conveyor_color);
+        let miner_color = Color::new(0.9, 0.6, 0.3, 0.95);
+        draw_rectangle(btn2_x, base_y, btn_size, btn_size, miner_color);
+        let smelter_color = Color::new(0.3, 0.8, 0.4, 0.95);
+        draw_rectangle(btn3_x, base_y, btn_size, btn_size, smelter_color);
+        let rotate_color = Color::new(0.2, 0.2, 0.2, 0.95);
+        draw_rectangle(rotate_x, base_y, btn_size, btn_size, rotate_color);
+
+        // highlight selected building
+        let (sel_x, sel_y) = match selected_spec_id {
+            1 => (btn1_x, base_y),
+            2 => (btn2_x, base_y),
+            3 => (btn3_x, base_y),
+            _ => (btn1_x, base_y),
+        };
+        draw_rectangle_lines(
+            sel_x,
+            sel_y,
+            btn_size,
+            btn_size,
+            4.0,
+            Color::new(1.0, 1.0, 0.0, 0.95),
+        );
+
+        // draw rotation label on rotate button
+        let rot_label = match selected_rotation {
+            game_core::Rotation::R0 => "0°",
+            game_core::Rotation::R90 => "90°",
+            game_core::Rotation::R180 => "180°",
+            game_core::Rotation::R270 => "270°",
+        };
+        draw_text(
+            rot_label,
+            rotate_x + 8.0,
+            base_y + btn_size / 2.0 + 6.0,
+            20.0,
+            WHITE,
+        );
+
         // HUD: draw simple pointer marker (screen-space)
         if let Some((px, py)) = input.pointer {
             draw_circle(px, py, 6.0, Color::new(1.0, 1.0, 0.0, 1.0));
@@ -216,13 +329,13 @@ async fn main() {
 
         // Simple text showing instructions (no mobile joystick)
         draw_text(
-            "Click or tap to select tiles | 1-finger: pan",
+            "Tap button to select building, tap grid to place | 1-finger: pan",
             20.0,
             20.0,
             20.0,
             WHITE,
         );
 
-        next_frame().await
+        next_frame().await;
     }
 }
