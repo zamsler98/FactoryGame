@@ -139,21 +139,13 @@ async fn main() {
 
         crate::render_grid::draw_grid(&grid_snapshot, hover_tile);
 
-
-
         // HUD: draw simple pointer marker
         if let Some((px, py)) = input.pointer {
             draw_circle(px, py, 6.0, Color::new(1.0, 1.0, 0.0, 1.0));
         }
 
         // Simple text showing instructions (no mobile joystick)
-        draw_text(
-            "Click or tap to select tiles",
-            20.0,
-            20.0,
-            20.0,
-            WHITE,
-        );
+        draw_text("Click or tap to select tiles", 20.0, 20.0, 20.0, WHITE);
 
         next_frame().await
     }
