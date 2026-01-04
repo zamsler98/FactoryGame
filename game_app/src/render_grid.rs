@@ -1,5 +1,5 @@
 use game_core::{Rotation, Size2, TilePos};
-use game_logic::grid_snapshot;
+
 use macroquad::prelude::*;
 
 pub const TILE_PX: f32 = 32.0;
@@ -7,8 +7,8 @@ pub const TILE_PX: f32 = 32.0;
 pub fn draw_grid(snapshot: &game_logic::placement::TileGridSnapshot, hover: Option<TilePos>) {
     let width = snapshot.width as i32;
     let height = snapshot.height as i32;
-    let screen_w = screen_width();
-    let screen_h = screen_height();
+    let _screen_w = screen_width();
+    let _screen_h = screen_height();
 
     // draw background for grid area (top-left aligned)
     clear_background(Color::from_rgba(20, 20, 20, 255));

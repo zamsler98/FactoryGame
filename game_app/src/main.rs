@@ -6,12 +6,10 @@
 //! Only this crate depends on `macroquad`.
 //!
 
-use game_core::EntityType;
 use game_logic::{update_world, InputFrame};
 use macroquad::prelude::*;
 
 mod render_grid;
-use crate::render_grid::TILE_PX;
 
 #[macroquad::main("FactoryGame - Macroquad")]
 async fn main() {
