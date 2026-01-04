@@ -70,7 +70,8 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
         >>"$LOG_FILE" 2>&1
     log "Implement prompt complete."
 
-    run_and_fix "cargo fmt"    "cargo fmt -- --check" || { ATTEMPT=$((ATTEMPT + 1)); continue; }
+    cargo fmt
+
     run_and_fix "cargo clippy" "cargo clippy --all-targets -- -D warnings" || { ATTEMPT=$((ATTEMPT + 1)); continue; }
     run_and_fix "cargo build"  "cargo build --target wasm32-unknown-unknown --release" || { ATTEMPT=$((ATTEMPT + 1)); continue; }
     run_and_fix "cargo test"   "cargo test" || { ATTEMPT=$((ATTEMPT + 1)); continue; }
