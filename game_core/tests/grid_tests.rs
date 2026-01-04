@@ -48,6 +48,6 @@ fn rotation_bounds() {
     // placing at (3,0) with R0 should be out of bounds (width 5, 3+3>5)
     let oob = TilePos { x: 3, y: 0 };
     assert!(!g.can_place(&spec, oob, Rotation::R0));
-    // rotated 90 swaps sizes; placing at (3,0) might fit depending on sizes
-    assert!(!g.can_place(&spec, oob, Rotation::R90));
+    // rotated 90 swaps sizes; placing at (3,0) should fit (2x3 footprint)
+    assert!(g.can_place(&spec, oob, Rotation::R90));
 }
