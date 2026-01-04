@@ -35,6 +35,7 @@ pub struct BuildingInstance {
     pub spec_id: u32,
     pub origin: TilePos,
     pub rotation: Rotation,
+    pub size: Size2,
 }
 
 #[derive(Debug)]
@@ -146,6 +147,7 @@ impl TileGrid {
             spec_id: spec.spec_id,
             origin,
             rotation: rot,
+            size: spec.size,
         };
         let tiles = Self::footprint_tiles(spec.size, origin, rot);
         for t in tiles {
@@ -160,7 +162,7 @@ impl TileGrid {
     pub fn remove(&mut self, id: InstanceId) -> Option<BuildingInstance> {
         let inst = self.instances.remove(&id)?;
         // clear tiles occupied by this instance
-        let tiles = Self::footprint_tiles(inst_size_from_spec(&inst), inst.origin, inst.rotation);
+        let tiles = Self::footprint_tiles(inst.size, inst.origin, inst.rotation);
         for t in tiles {
             if let Some(idx) = self.tile_index(t) {
                 if self.tiles[idx] == Some(id) {
