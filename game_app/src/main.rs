@@ -104,12 +104,16 @@ async fn main() {
         // Update game state using platform-agnostic logic
         update_world(&mut world, &input, dt);
 
-            // --- Rendering (platform-specific) ---
+        // --- Rendering (platform-specific) ---
         // We'll render the grid (top-left aligned) and then other HUD on top.
         let grid_snapshot = {
             // For now create a tiny empty snapshot; eventually this will come from game_logic's grid.
             // We'll construct a snapshot sized 128x128 with no instances when none present.
-            let snap = game_logic::placement::TileGridSnapshot { width: 128, height: 128, instances: Vec::new() };
+            let snap = game_logic::placement::TileGridSnapshot {
+                width: 128,
+                height: 128,
+                instances: Vec::new(),
+            };
             // TODO: integrate real grid snapshot from world when world contains one.
             snap
         };
