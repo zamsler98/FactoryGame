@@ -188,14 +188,18 @@ async fn main() {
             None
         };
 
-        // compute visible bounds in tile coordinates
+        // compute visible bounds in tile coordinates (handle inverted Y from camera)
         let top_left_world = screen_to_world_vec2(vec2(0.0, 0.0), &camera, zoom);
         let bottom_right_world =
             screen_to_world_vec2(vec2(screen_width(), screen_height()), &camera, zoom);
-        let min_x = (top_left_world.x / crate::render_grid::TILE_PX).floor() as i32;
-        let min_y = (top_left_world.y / crate::render_grid::TILE_PX).floor() as i32;
-        let max_x = (bottom_right_world.x / crate::render_grid::TILE_PX).floor() as i32;
-        let max_y = (bottom_right_world.y / crate::render_grid::TILE_PX).floor() as i32;
+        let world_min_x = top_left_world.x.min(bottom_right_world.x);
+        let world_max_x = top_left_world.x.max(bottom_right_world.x);
+        let world_min_y = top_left_world.y.min(bottom_right_world.y);
+        let world_max_y = top_left_world.y.max(bottom_right_world.y);
+        let min_x = (world_min_x / crate::render_grid::TILE_PX).floor() as i32;
+        let min_y = (world_min_y / crate::render_grid::TILE_PX).floor() as i32;
+        let max_x = (world_max_x / crate::render_grid::TILE_PX).floor() as i32;
+        let max_y = (world_max_y / crate::render_grid::TILE_PX).floor() as i32;
 
         // Apply camera and draw world-space grid
         set_camera(&camera);
