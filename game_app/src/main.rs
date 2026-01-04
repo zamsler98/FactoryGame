@@ -109,7 +109,7 @@ async fn main() {
         let grid_snapshot = {
             // For now create a tiny empty snapshot; eventually this will come from game_logic's grid.
             // We'll construct a snapshot sized 128x128 with no instances when none present.
-            let mut snap = game_logic::placement::TileGridSnapshot { width: 128, height: 128, instances: Vec::new() };
+            let snap = game_logic::placement::TileGridSnapshot { width: 128, height: 128, instances: Vec::new() };
             // TODO: integrate real grid snapshot from world when world contains one.
             snap
         };
