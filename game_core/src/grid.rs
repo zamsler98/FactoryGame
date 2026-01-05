@@ -173,14 +173,3 @@ impl TileGrid {
         Some(inst)
     }
 }
-
-// Helper: derive size from instance spec id using a tiny convenience mapping.
-// In a full game this would live elsewhere; for now keep a minimal mapping so remove() can compute footprint.
-fn inst_size_from_spec(inst: &BuildingInstance) -> Size2 {
-    match inst.spec_id {
-        1 => Size2 { w: 1, h: 1 }, // conveyor
-        2 => Size2 { w: 1, h: 1 }, // miner
-        3 => Size2 { w: 1, h: 1 }, // smelter
-        _ => Size2 { w: 1, h: 1 },
-    }
-}
