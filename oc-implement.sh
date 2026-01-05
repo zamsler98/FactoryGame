@@ -30,8 +30,16 @@ run_and_fix() {
 
     log "Running $STEP_NAME (silently)..."
 
-    OUTPUT=$(eval "$COMMAND" 2>&1 | tee -a "$LOG_FILE")
-    STATUS=${PIPESTATUS[0]}
+    # Capture output and exit status without losing the real exit code.
+    # Using a temporary file avoids subshell/PIPESTATUS issues and high-memory variable capture.
+    TMP_OUT=$(mktemp)
+    eval "$COMMAND" >"$TMP_OUT" 2>&1
+    STATUS=$?
+    OUTPUT=$(cat "$TMP_OUT")
+    rm -f "$TMP_OUT"
+
+    # Append output to log and echo it for visibility
+    echo "$OUTPUT" | tee -a "$LOG_FILE"
 
     if [ $STATUS -eq 0 ]; then
         log "$STEP_NAME passed."
