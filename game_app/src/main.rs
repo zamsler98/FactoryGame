@@ -197,6 +197,49 @@ async fn main() {
         let btn3_x = btn2_x + btn_size + spacing;
         let rotate_x = btn3_x + btn_size + spacing;
 
+        // Handle desktop mouse clicks as edge-detected events so HUD clicks don't double-fire.
+        let mouse_clicked = is_mouse_button_pressed(MouseButton::Left);
+        if mouse_clicked {
+            let (px, py) = mouse_position();
+            // check HUD buttons first (point-in-rect)
+            let in_btn1 =
+                px >= btn1_x && px <= btn1_x + btn_size && py >= base_y && py <= base_y + btn_size;
+            let in_btn2 =
+                px >= btn2_x && px <= btn2_x + btn_size && py >= base_y && py <= base_y + btn_size;
+            let in_btn3 =
+                px >= btn3_x && px <= btn3_x + btn_size && py >= base_y && py <= base_y + btn_size;
+            let in_rotate = px >= rotate_x
+                && px <= rotate_x + btn_size
+                && py >= base_y
+                && py <= base_y + btn_size;
+
+            if in_btn1 {
+                selected_spec_id = 1;
+                hud_consumed = true;
+            } else if in_btn2 {
+                selected_spec_id = 2;
+                hud_consumed = true;
+            } else if in_btn3 {
+                selected_spec_id = 3;
+                hud_consumed = true;
+            } else if in_rotate {
+                // cycle rotation (single step)
+                selected_rotation = match selected_rotation {
+                    game_core::Rotation::R0 => game_core::Rotation::R90,
+                    game_core::Rotation::R90 => game_core::Rotation::R180,
+                    game_core::Rotation::R180 => game_core::Rotation::R270,
+                    game_core::Rotation::R270 => game_core::Rotation::R0,
+                };
+                hud_consumed = true;
+            } else {
+                // Not HUD: treat as a placement click (set input pointer/action so placement code runs below)
+                input.action = true;
+                input.pointer = Some((px, py));
+            }
+        }
+
+        // Also handle touch taps or other input.action sources (keyboard, gamepad). If input.action is set
+        // (e.g., from touch tap detection earlier), handle HUD/placement similarly. This preserves touch behavior.
         if input.action {
             if let Some((px, py)) = input.pointer {
                 // check HUD buttons first (point-in-rect)
@@ -227,7 +270,7 @@ async fn main() {
                     selected_spec_id = 3;
                     hud_consumed = true;
                 } else if in_rotate {
-                    // cycle rotation
+                    // cycle rotation (single step)
                     selected_rotation = match selected_rotation {
                         game_core::Rotation::R0 => game_core::Rotation::R90,
                         game_core::Rotation::R90 => game_core::Rotation::R180,
@@ -321,6 +364,15 @@ async fn main() {
             20.0,
             WHITE,
         );
+
+        // Draw selected building name above the toolbar
+        let sel_name = match selected_spec_id {
+            1 => "Conveyor",
+            2 => "Miner",
+            3 => "Smelter",
+            _ => "Unknown",
+        };
+        draw_text(sel_name, hud_margin, base_y - 8.0, 20.0, WHITE);
 
         // HUD: draw simple pointer marker (screen-space)
         if let Some((px, py)) = input.pointer {
