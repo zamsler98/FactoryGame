@@ -104,9 +104,20 @@ pub fn register_example_buildings(world: &World) {
                 });
             }
             2 => {
-                // miner: spawn at center of tile
-                let x = (inst.origin.x as f32 + 0.5) * TILE_SIZE;
-                let y = (inst.origin.y as f32 + 0.5) * TILE_SIZE;
+                // miner: spawn into the adjacent tile in miner's rotation direction
+                // determine tile-direction from rotation
+                let (dxi, dyi) = match inst.rotation {
+                    game_core::Rotation::R0 => (1, 0),
+                    game_core::Rotation::R90 => (0, 1),
+                    game_core::Rotation::R180 => (-1, 0),
+                    game_core::Rotation::R270 => (0, -1),
+                };
+                let out_tile = TilePos {
+                    x: inst.origin.x + dxi,
+                    y: inst.origin.y + dyi,
+                };
+                let x = (out_tile.x as f32 + 0.5) * TILE_SIZE;
+                let y = (out_tile.y as f32 + 0.5) * TILE_SIZE;
                 // reuse previous accumulator if miner existed at same tile
                 let prev_accum = previous_miners
                     .iter()
