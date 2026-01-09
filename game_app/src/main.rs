@@ -345,6 +345,48 @@ async fn main() {
         let mut backend = MacroquadDrawBackend;
         draw_world(&world, &mut backend);
 
+        // Debug overlay: highlight tile under each item and show velocity
+        for it in &world.items {
+            let tx = (it.transform.x / crate::render_grid::TILE_PX).floor() as i32;
+            let ty = (it.transform.y / crate::render_grid::TILE_PX).floor() as i32;
+            let rx = tx as f32 * crate::render_grid::TILE_PX;
+            let ry = ty as f32 * crate::render_grid::TILE_PX;
+            // red outline on tile
+            draw_rectangle_lines(
+                rx,
+                ry,
+                crate::render_grid::TILE_PX,
+                crate::render_grid::TILE_PX,
+                3.0,
+                Color::new(1.0, 0.0, 0.0, 0.9),
+            );
+            // velocity text near the item
+            let vtxt = format!("{:.0},{:.0}", it.velocity.vx, it.velocity.vy);
+            draw_text(
+                &vtxt,
+                it.transform.x + 6.0,
+                it.transform.y - 6.0,
+                16.0,
+                Color::new(1.0, 0.2, 0.2, 1.0),
+            );
+
+            // also mark if there's a conveyor in that tile (green outline)
+            if grid_snapshot
+                .instances
+                .iter()
+                .any(|inst| inst.spec_id == 1 && inst.origin.x == tx && inst.origin.y == ty)
+            {
+                draw_rectangle_lines(
+                    rx + 4.0,
+                    ry + 4.0,
+                    crate::render_grid::TILE_PX - 8.0,
+                    crate::render_grid::TILE_PX - 8.0,
+                    2.0,
+                    Color::new(0.0, 1.0, 0.0, 0.9),
+                );
+            }
+        }
+
         set_default_camera();
 
         // Update camera zoom into camera struct (so world drawing respects zoom if changed later)
