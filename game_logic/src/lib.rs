@@ -44,6 +44,7 @@ pub const CONVEYOR_SPEED: f32 = 64.0; // units/sec
 // simple building types by spec id (1=conveyor,2=miner,3=smelter)
 #[derive(Clone, Debug)]
 struct MinerState {
+    pub tile: TilePos,
     pub spawn_accum: f32,
     pub output_pos: (f32, f32),
 }
@@ -82,7 +83,8 @@ pub fn register_example_buildings(world: &World) {
     // For demo purposes we scan tile grid for instances and register conveyors/miners/smelters
     // This function is cheap-ish and idempotent; we keep a simple snapshot in LOGIC_STATE.
     let mut state = ensure_logic_state();
-    state.miners.clear();
+    // preserve previous miners' spawn_accum when re-registering
+    let previous_miners = std::mem::take(&mut state.miners);
     state.conveyors.clear();
     state.smelters.clear();
 
@@ -105,8 +107,15 @@ pub fn register_example_buildings(world: &World) {
                 // miner: spawn at center of tile
                 let x = (inst.origin.x as f32 + 0.5) * TILE_SIZE;
                 let y = (inst.origin.y as f32 + 0.5) * TILE_SIZE;
+                // reuse previous accumulator if miner existed at same tile
+                let prev_accum = previous_miners
+                    .iter()
+                    .find(|m| m.tile == inst.origin)
+                    .map(|m| m.spawn_accum)
+                    .unwrap_or(0.0);
                 state.miners.push(MinerState {
-                    spawn_accum: 0.0,
+                    tile: inst.origin,
+                    spawn_accum: prev_accum,
                     output_pos: (x, y),
                 });
             }
