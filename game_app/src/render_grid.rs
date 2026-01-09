@@ -83,11 +83,11 @@ pub fn draw_grid(
         if inst.origin.x < min_x || inst.origin.y < min_y {
             continue;
         }
-        // determine footprint size based on spec id (same mapping as core)
+        // determine footprint size based on spec id (all 1x1 for now)
         let size = match inst.spec_id {
             1 => Size2 { w: 1, h: 1 },
-            2 => Size2 { w: 2, h: 2 },
-            3 => Size2 { w: 3, h: 3 },
+            2 => Size2 { w: 1, h: 1 },
+            3 => Size2 { w: 1, h: 1 },
             _ => Size2 { w: 1, h: 1 },
         };
         let rs = match inst.rotation {
@@ -115,6 +115,32 @@ pub fn draw_grid(
             _ => Color::new(0.7, 0.7, 0.7, 0.9),
         };
         draw_rectangle(x, y, w, h, color);
+
+        // Draw direction indicator for conveyor and miner
+        if inst.spec_id == 1 || inst.spec_id == 2 {
+            // center of tile
+            let cx = x + TILE_PX * 0.5;
+            let cy = y + TILE_PX * 0.5;
+            let len = TILE_PX * 0.28; // arrow length
+                                      // compute unit direction from rotation (R0 => right)
+            let (dx, dy) = match inst.rotation {
+                Rotation::R0 => (1.0, 0.0),
+                Rotation::R90 => (0.0, 1.0),
+                Rotation::R180 => (-1.0, 0.0),
+                Rotation::R270 => (0.0, -1.0),
+            };
+            let tip_x = cx + dx * len;
+            let tip_y = cy + dy * len;
+            // base width for triangle
+            let bw = TILE_PX * 0.14;
+            // perpendicular vector
+            let (px_off, py_off) = (-dy * bw, dx * bw);
+            let p1 = Vec2::new(tip_x, tip_y);
+            let p2 = Vec2::new(cx + px_off, cy + py_off);
+            let p3 = Vec2::new(cx - px_off, cy - py_off);
+            let arrow_color = Color::new(0.1, 0.1, 0.1, 0.95);
+            draw_triangle(p1, p2, p3, arrow_color);
+        }
     }
 
     // hover highlight

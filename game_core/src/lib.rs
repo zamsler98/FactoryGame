@@ -54,6 +54,7 @@ impl fmt::Display for Entity {
 /// Minimal world container with deterministic update (physics integration).
 pub struct World {
     pub entities: Vec<Entity>, // intentionally public for iterating/drawing
+    pub tile_grid: TileGrid,
     next_id: EntityId,
 }
 
@@ -62,6 +63,7 @@ impl World {
     pub fn new() -> Self {
         Self {
             entities: Vec::new(),
+            tile_grid: TileGrid::new(1000, 1000),
             next_id: 1,
         }
     }
