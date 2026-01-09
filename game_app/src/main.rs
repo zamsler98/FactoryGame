@@ -68,12 +68,13 @@ async fn main() {
             input.move_y /= mag;
         }
 
-        // Action (space / mouse click)
-        input.action = is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left);
-
         // Mobile touch: collect touches for pointer and tap detection (no joystick)
         let mut touch_pointer: Option<Vec2> = None;
         let touches_now = touches();
+
+        // Action (space / mouse click). Ignore mouse events when touch input is present
+        input.action = is_key_pressed(KeyCode::Space)
+            || (touches_now.is_empty() && is_mouse_button_pressed(MouseButton::Left));
 
         // Record current touches, set pointer to first touch
         for t in &touches_now {
@@ -199,7 +200,8 @@ async fn main() {
         let rotate_x = btn3_x + btn_size + spacing;
 
         // Handle desktop mouse clicks as edge-detected events so HUD clicks don't double-fire.
-        let mouse_clicked = is_mouse_button_released(MouseButton::Left);
+        // Ignore mouse clicks if touch input is present to avoid synthetic mouse events on touch devices.
+        let mouse_clicked = touches_now.is_empty() && is_mouse_button_released(MouseButton::Left);
         if mouse_clicked {
             let (px, py) = mouse_position();
             // check HUD buttons first (point-in-rect)
