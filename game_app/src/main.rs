@@ -40,6 +40,7 @@ async fn main() {
     let mut selected_spec_id: u32 = 1; // 1=conveyor,2=miner,3=smelter
     let mut selected_rotation: game_core::Rotation = game_core::Rotation::R0;
 
+    let mut last_rotate_time: f64 = 0.0;
     loop {
         let dt = get_frame_time();
 
@@ -198,7 +199,7 @@ async fn main() {
         let rotate_x = btn3_x + btn_size + spacing;
 
         // Handle desktop mouse clicks as edge-detected events so HUD clicks don't double-fire.
-        let mouse_clicked = is_mouse_button_pressed(MouseButton::Left);
+        let mouse_clicked = is_mouse_button_released(MouseButton::Left);
         if mouse_clicked {
             let (px, py) = mouse_position();
             // check HUD buttons first (point-in-rect)
@@ -223,13 +224,18 @@ async fn main() {
                 selected_spec_id = 3;
                 hud_consumed = true;
             } else if in_rotate {
-                // cycle rotation (single step)
-                selected_rotation = match selected_rotation {
-                    game_core::Rotation::R0 => game_core::Rotation::R90,
-                    game_core::Rotation::R90 => game_core::Rotation::R180,
-                    game_core::Rotation::R180 => game_core::Rotation::R270,
-                    game_core::Rotation::R270 => game_core::Rotation::R0,
-                };
+                // cycle rotation (single step) with debounce to avoid rapid skips
+                const ROTATE_DEBOUNCE: f64 = 0.15;
+                let current_time = get_time();
+                if (current_time - last_rotate_time) > ROTATE_DEBOUNCE {
+                    selected_rotation = match selected_rotation {
+                        game_core::Rotation::R0 => game_core::Rotation::R90,
+                        game_core::Rotation::R90 => game_core::Rotation::R180,
+                        game_core::Rotation::R180 => game_core::Rotation::R270,
+                        game_core::Rotation::R270 => game_core::Rotation::R0,
+                    };
+                    last_rotate_time = current_time;
+                }
                 hud_consumed = true;
             } else {
                 // Not HUD: treat as a placement click (set input pointer/action so placement code runs below)
@@ -240,7 +246,7 @@ async fn main() {
 
         // Also handle touch taps or other input.action sources (keyboard, gamepad). If input.action is set
         // (e.g., from touch tap detection earlier), handle HUD/placement similarly. This preserves touch behavior.
-        if input.action {
+        if input.action && !hud_consumed {
             if let Some((px, py)) = input.pointer {
                 // check HUD buttons first (point-in-rect)
                 let in_btn1 = px >= btn1_x
@@ -270,13 +276,18 @@ async fn main() {
                     selected_spec_id = 3;
                     hud_consumed = true;
                 } else if in_rotate {
-                    // cycle rotation (single step)
-                    selected_rotation = match selected_rotation {
-                        game_core::Rotation::R0 => game_core::Rotation::R90,
-                        game_core::Rotation::R90 => game_core::Rotation::R180,
-                        game_core::Rotation::R180 => game_core::Rotation::R270,
-                        game_core::Rotation::R270 => game_core::Rotation::R0,
-                    };
+                    // cycle rotation (single step) with debounce to avoid rapid skips
+                    const ROTATE_DEBOUNCE: f64 = 0.15;
+                    let current_time = get_time();
+                    if (current_time - last_rotate_time) > ROTATE_DEBOUNCE {
+                        selected_rotation = match selected_rotation {
+                            game_core::Rotation::R0 => game_core::Rotation::R90,
+                            game_core::Rotation::R90 => game_core::Rotation::R180,
+                            game_core::Rotation::R180 => game_core::Rotation::R270,
+                            game_core::Rotation::R270 => game_core::Rotation::R0,
+                        };
+                        last_rotate_time = current_time;
+                    }
                     hud_consumed = true;
                 }
 
