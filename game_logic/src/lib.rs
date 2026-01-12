@@ -1,7 +1,7 @@
 //! game_logic: processes inputs, game rules, and AI.
 //! Depends on `game_core` only. It exposes an `InputFrame` and `update_world`.
 
-use game_core::{EntityType, TilePos, World};
+use game_core::{EntityType, World};
 
 /// `InputFrame` is the platform-agnostic input snapshot.
 /// The platform layer (`game_app`) fills this each frame and passes to logic.
@@ -34,6 +34,70 @@ impl Default for InputFrame {
 /// - updates enemy behavior (very simple: move toward player)
 ///
 /// Note: This function does not render or call Macroquad.
+pub fn update_world(world: &mut World, input: &InputFrame, dt: f32) {
+    const PLAYER_SPEED: f32 = 180.0;
+    const ENEMY_SPEED: f32 = 80.0;
+
+    // Apply player input by setting velocity on the player entity.
+    if let Some(player) = world.find_player_mut() {
+        player.velocity.vx = input.move_x * PLAYER_SPEED;
+        player.velocity.vy = input.move_y * PLAYER_SPEED;
+
+        // Example: if action pressed, do something. Here we just print for headless logs.
+        if input.action {
+            // In a real game we'd spawn bullets or trigger actions.
+            // Keep pure: don't call platform logging here.
+            // You could return an event enum from this function if needed.
+        }
+    }
+
+    // Simple enemy AI: move toward player
+    if let Some(player_pos) = world.find_player().map(|p| (p.transform.x, p.transform.y)) {
+        for e in &mut world.entities {
+            if e.ty == EntityType::Enemy {
+                let dx = player_pos.0 - e.transform.x;
+                let dy = player_pos.1 - e.transform.y;
+                let dist = (dx * dx + dy * dy).sqrt().max(0.001);
+                let nx = dx / dist;
+                let ny = dy / dist;
+                e.velocity.vx = nx * ENEMY_SPEED;
+                e.velocity.vy = ny * ENEMY_SPEED;
+            }
+        }
+    }
+
+    // Integrate physics for positions (game_core provides deterministic integration).
+    world.update_physics(dt);
+}
+
+/// Optional: an abstract drawing trait that UI/app can implement if desired.
+/// game_logic can provide high-level debug draw calls using this trait (optional).
+pub mod placement;
+
+pub trait DrawBackend {
+    fn draw_circle(&mut self, x: f32, y: f32, radius: f32, rgba: (f32, f32, f32, f32));
+}
+
+
+impl Default for InputFrame {
+    fn default() -> Self {
+        Self {
+            move_x: 0.0,
+            move_y: 0.0,
+            action: false,
+            pointer: None,
+        }
+    }
+}
+
+/// Update the world based on the `input` and a timestep `dt`.
+///
+/// - moves player by setting its velocity from input
+/// - updates enemy behavior (very simple: move toward player)
+///
+/// Note: This function does not render or call Macroquad.
+<<<<<<< HEAD
+=======
 use std::sync::{Mutex, OnceLock};
 
 pub const ITEM_RADIUS: f32 = 8.0;
@@ -127,6 +191,7 @@ pub trait DrawBackend {
 }
 
 /// Update the world based on the `input` and a timestep `dt`.
+>>>>>>> parent of e301aca (feat: implement item flow (miner → conveyor → smelter) and rendering)
 pub fn update_world(world: &mut World, input: &InputFrame, dt: f32) {
     const PLAYER_SPEED: f32 = 180.0;
     const ENEMY_SPEED: f32 = 80.0;
@@ -159,67 +224,14 @@ pub fn update_world(world: &mut World, input: &InputFrame, dt: f32) {
         }
     }
 
-    // ----- New logic systems -----
-    // Ensure logic state reflects current tile grid
-    register_example_buildings(world);
-
-    let mut state = ensure_logic_state();
-
-    // Miner system: spawn one item per second per miner, initial velocity zero
-    for miner in &mut state.miners {
-        miner.spawn_accum += dt;
-        while miner.spawn_accum >= MINER_SPAWN_INTERVAL {
-            miner.spawn_accum -= MINER_SPAWN_INTERVAL;
-            world.spawn_item(
-                miner.output_pos.0,
-                miner.output_pos.1,
-                0.0,
-                0.0,
-                ITEM_RADIUS,
-            );
-        }
-    }
-
-    // Conveyor system: for each item, if overlapping conveyor tile, set velocity instantly
-    for it in &mut world.items {
-        // compute tile under item center
-        let tx = (it.transform.x / TILE_SIZE).floor() as i32;
-        let ty = (it.transform.y / TILE_SIZE).floor() as i32;
-        let tpos = TilePos { x: tx, y: ty };
-        // find conveyor at that tile
-        if let Some(conv) = state.conveyors.iter().find(|c| c.tile == tpos) {
-            it.velocity.vx = conv.direction.0 * CONVEYOR_SPEED;
-            it.velocity.vy = conv.direction.1 * CONVEYOR_SPEED;
-        }
-    }
-
-    // Smelter system: if item inside smelter tile, remove it
-    // collect ids to remove to avoid mutating while iterating
-    let mut to_remove: Vec<u64> = Vec::new();
-    for it in &world.items {
-        let tx = (it.transform.x / TILE_SIZE).floor() as i32;
-        let ty = (it.transform.y / TILE_SIZE).floor() as i32;
-        let tpos = TilePos { x: tx, y: ty };
-        if state.smelters.iter().any(|s| s.tile == tpos) {
-            to_remove.push(it.id);
-        }
-    }
-    for id in to_remove {
-        let _ = world.remove_item(id);
-    }
-
     // Integrate physics for positions (game_core provides deterministic integration).
     world.update_physics(dt);
 }
 
-/// Draw the world (items) using a platform-provided backend. Items are blue circles.
-pub fn draw_world(world: &World, draw: &mut dyn DrawBackend) {
-    for it in &world.items {
-        draw.draw_circle(
-            it.transform.x,
-            it.transform.y,
-            it.radius,
-            (0.2, 0.4, 1.0, 1.0),
-        );
-    }
+/// Optional: an abstract drawing trait that UI/app can implement if desired.
+/// game_logic can provide high-level debug draw calls using this trait (optional).
+pub mod placement;
+
+pub trait DrawBackend {
+    fn draw_circle(&mut self, x: f32, y: f32, radius: f32, rgba: (f32, f32, f32, f32));
 }
