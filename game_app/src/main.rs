@@ -6,7 +6,7 @@
 //! Only this crate depends on `macroquad`.
 //!
 
-use game_logic::{draw_world, update_world, DrawBackend, InputFrame};
+use game_logic::{update_world, InputFrame};
 use macroquad::prelude::*;
 use std::collections::HashMap;
 
@@ -41,15 +41,6 @@ async fn main() {
     let mut selected_rotation: game_core::Rotation = game_core::Rotation::R0;
 
     let mut last_rotate_time: f64 = 0.0;
-    // Simple draw backend implementation using macroquad
-    struct MacroquadDrawBackend;
-    impl DrawBackend for MacroquadDrawBackend {
-        fn draw_circle(&mut self, x: f32, y: f32, radius: f32, rgba: (f32, f32, f32, f32)) {
-            let col = Color::new(rgba.0, rgba.1, rgba.2, rgba.3);
-            draw_circle(x, y, radius, col);
-        }
-    }
-
     loop {
         let dt = get_frame_time();
 
@@ -191,6 +182,9 @@ async fn main() {
             None
         };
 
+        // Update game state using platform-agnostic logic
+        update_world(&mut world, &input, dt);
+
         // Handle HUD input and placement (screen-space)
         // Toolbar geometry
         let hud_margin = 16.0;
@@ -317,9 +311,6 @@ async fn main() {
             }
         }
 
-        // Update game state using platform-agnostic logic
-        update_world(&mut world, &input, dt);
-
         // --- Rendering (platform-specific) ---
         // Use real grid snapshot from the world's tile grid
         let grid_snapshot = game_logic::placement::grid_snapshot(&world.tile_grid);
@@ -340,11 +331,6 @@ async fn main() {
         // Apply camera and draw world-space grid
         set_camera(&camera);
         crate::render_grid::draw_grid(&grid_snapshot, hover_tile, min_x, max_x, min_y, max_y);
-
-        // Draw items as blue circles (world-space) using backend
-        let mut backend = MacroquadDrawBackend;
-        draw_world(&world, &mut backend);
-
         set_default_camera();
 
         // Update camera zoom into camera struct (so world drawing respects zoom if changed later)
