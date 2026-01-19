@@ -109,7 +109,7 @@ pub fn draw_grid(
             continue;
         }
         let color = match inst.spec_id {
-            1 => Color::new(0.8, 0.8, 0.8, 0.9),
+            1 => Color::new(1.0, 1.0, 1.0, 0.95),
             2 => Color::new(0.9, 0.6, 0.3, 0.9),
             3 => Color::new(0.3, 0.8, 0.4, 0.9),
             _ => Color::new(0.7, 0.7, 0.7, 0.9),

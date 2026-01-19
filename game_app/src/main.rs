@@ -338,7 +338,7 @@ async fn main() {
 
         // --- HUD draw (screen-space)
         // Draw buttons
-        let conveyor_color = Color::new(0.8, 0.8, 0.8, 0.95);
+        let conveyor_color = Color::new(1.0, 1.0, 1.0, 0.95);
         draw_rectangle(btn1_x, base_y, btn_size, btn_size, conveyor_color);
         let miner_color = Color::new(0.9, 0.6, 0.3, 0.95);
         draw_rectangle(btn2_x, base_y, btn_size, btn_size, miner_color);
