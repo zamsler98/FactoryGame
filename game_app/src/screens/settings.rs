@@ -18,13 +18,13 @@ impl SettingsScreen {
 
     pub fn update(&mut self) -> ScreenCommand {
         let back_rect = self.back_button_rect();
-        self.hovered_back = hit_test(&[back_rect], mouse_position()).is_some();
+        let back_hovered = hit_test(&[back_rect], mouse_position()).is_some();
+        self.hovered_back = back_hovered;
 
         if is_key_pressed(KeyCode::Escape)
             || is_key_pressed(KeyCode::Enter)
             || is_key_pressed(KeyCode::Space)
-            || (is_mouse_button_released(MouseButton::Left)
-                && hit_test(&[back_rect], mouse_position()).is_some())
+            || (is_mouse_button_released(MouseButton::Left) && back_hovered)
         {
             return ScreenCommand::Switch(ScreenId::Home);
         }
