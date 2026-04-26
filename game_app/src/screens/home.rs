@@ -143,7 +143,16 @@ fn current_pointer() -> Option<(f32, f32)> {
 }
 
 fn activated_button(rects: &[UiRect]) -> Option<usize> {
-    if is_mouse_button_released(MouseButton::Left) {
+    let active_touches = touches();
+
+    if let Some(touch) = active_touches
+        .iter()
+        .find(|touch| touch.phase == TouchPhase::Ended)
+    {
+        return hit_test(rects, (touch.position.x, touch.position.y));
+    }
+
+    if active_touches.is_empty() && is_mouse_button_released(MouseButton::Left) {
         return hit_test(rects, mouse_position());
     }
 
