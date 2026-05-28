@@ -3,8 +3,9 @@
 
 SHELL := /bin/bash
 WASM_NAME ?= factorygame.wasm
+PORT      ?= 8080
 
-.PHONY: help fmt clippy build run test add-wasm-target wasm clean dist
+.PHONY: help fmt clippy build run test add-wasm-target wasm serve dev clean dist
 
 help:
 	@echo "Available targets:"
@@ -16,6 +17,8 @@ help:
 	@echo "  test            cargo test"
 	@echo "  add-wasm-target Add the wasm target: rustup target add wasm32-unknown-unknown"
 	@echo "  wasm            Build game_app for wasm and copy to dist/$(WASM_NAME)"
+	@echo "  serve           Serve dist/ on http://localhost:$(PORT)"
+	@echo "  dev             wasm + serve (build and open in browser)"
 	@echo "  clean           cargo clean and remove dist/"
 
 fmt:
@@ -40,7 +43,14 @@ wasm: add-wasm-target
 	cargo build -p game_app --target wasm32-unknown-unknown --release
 	mkdir -p dist
 	cp target/wasm32-unknown-unknown/release/game_app.wasm dist/$(WASM_NAME)
+	cp index.html dist/
 	@echo "WASM built and copied to dist/$(WASM_NAME)"
+
+serve:
+	@echo "Open http://localhost:$(PORT) in your browser"
+	python3 -m http.server $(PORT) --directory dist
+
+dev: wasm serve
 
 clean:
 	cargo clean
@@ -48,7 +58,3 @@ clean:
 
 dist:
 	mkdir -p dist
-
-# Notes:
-# - The wasm target copies game_app.wasm to dist/factorygame.wasm to remain compatible with index.html
-# - CI may prefer calling `make wasm` to build and prepare dist/
