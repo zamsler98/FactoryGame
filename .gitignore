@@ -50,9 +50,6 @@ Thumbs.db
 node_modules/
 package-lock.json
 
-# Output WASM artifacts (ignore if strictly generated; otherwise, remove line)
-# *.wasm
-
-# Note: If you want to ignore factorygame.wasm, uncomment the below; right now, it is tracked.
-# /factorygame.wasm
+# Output WASM artifacts
+/factorygame.wasm
 
