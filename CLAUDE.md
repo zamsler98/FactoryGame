@@ -7,18 +7,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Common tasks are wrapped in the top-level `Makefile`; run `make help` to list all targets.
 
 ```bash
-make fmt      # cargo fmt --all — format all crates
-make clippy   # cargo clippy --all-targets -- -D warnings — lint (zero warnings enforced)
-make build    # cargo build — build workspace
-make run      # cargo run -p game_app — run desktop app
-make test     # cargo test — run all tests
-make wasm     # cargo build -p game_app --target wasm32-unknown-unknown --release, then copies the output into dist/
-make serve    # serve dist/ at http://localhost:8080
-make dev      # wasm + serve — build WASM and open it locally
-make clean    # cargo clean and remove dist/
+make fmt        # cargo fmt --all — format all crates
+make fmt-check  # cargo fmt --all -- --check — verify formatting without rewriting files (CI gate)
+make clippy     # cargo clippy --all-targets -- -D warnings — lint (zero warnings enforced)
+make build      # cargo build — build workspace
+make run        # cargo run -p game_app — run desktop app
+make test       # cargo test — run all tests
+make wasm       # cargo build -p game_app --target wasm32-unknown-unknown --release, then copies the output into dist/
+make serve      # serve dist/ at http://localhost:8080
+make dev        # wasm + serve — build WASM and open it locally
+make clean      # cargo clean and remove dist/
 ```
 
-**All PRs must pass `make fmt` and `make clippy` with zero warnings.**
+**All PRs must pass `make fmt-check` and `make clippy` with zero warnings.** CI (`.github/workflows/pr-preview.yml`, `deploy-prod.yml`) runs `make wasm`, `make fmt-check`, `make clippy`, and `make test`.
 
 ## Architecture
 

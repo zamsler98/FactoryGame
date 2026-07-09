@@ -24,24 +24,17 @@ jobs:
           toolchain: stable
           target: wasm32-unknown-unknown
 
-      - name: Build WASM (release)
-        run: cargo build -p game_app --target wasm32-unknown-unknown --release
+      - name: Build & package WASM (release)
+        run: make wasm
 
       - name: Check formatting
-        run: cargo fmt -- --check
+        run: make fmt-check
 
       - name: Lint (clippy)
-        run: cargo clippy --all-targets -- -D warnings
+        run: make clippy
 
       - name: Run tests
-        run: cargo test
-
-      - name: Prepare deployment directory
-        run: |
-          mkdir -p dist
-          cp index.html dist/
-          # build the game_app package and place the wasm as factorygame.wasm to keep compatibility with index.html
-          cp target/wasm32-unknown-unknown/release/game_app.wasm dist/factorygame.wasm
+        run: make test
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
