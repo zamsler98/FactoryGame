@@ -5,12 +5,13 @@ SHELL := /bin/bash
 WASM_NAME ?= factorygame.wasm
 PORT      ?= 8080
 
-.PHONY: help fmt clippy build run test add-wasm-target wasm serve dev clean dist
+.PHONY: help fmt fmt-check clippy build run test add-wasm-target wasm serve dev clean dist
 
 help:
 	@echo "Available targets:"
 	@echo "  help            Show this message"
 	@echo "  fmt             Run cargo fmt --all"
+	@echo "  fmt-check       Run cargo fmt --all -- --check (CI formatting gate)"
 	@echo "  clippy          Run cargo clippy --all-targets -- -D warnings"
 	@echo "  build           cargo build"
 	@echo "  run             cargo run -p game_app"
@@ -23,6 +24,9 @@ help:
 
 fmt:
 	cargo fmt --all
+
+fmt-check:
+	cargo fmt --all -- --check
 
 clippy:
 	cargo clippy --all-targets -- -D warnings
