@@ -6,7 +6,7 @@
 //! Only this crate depends on `macroquad`.
 //!
 
-use game_logic::{update_world, InputFrame};
+use game_logic::InputFrame;
 use macroquad::prelude::*;
 use std::collections::HashMap;
 
@@ -14,11 +14,8 @@ mod render_grid;
 
 #[macroquad::main("FactoryGame - Macroquad")]
 async fn main() {
-    // Create and populate the game world (game_core)
+    // Create the game world (game_core)
     let mut world = game_core::World::new();
-    world.spawn_player(200.0, 200.0);
-    world.spawn_enemy(500.0, 200.0);
-    world.spawn_enemy(500.0, 400.0);
 
     // Camera & zoom state for panning/zooming
     let mut camera = Camera2D {
@@ -42,31 +39,8 @@ async fn main() {
 
     let mut last_rotate_time: f64 = 0.0;
     loop {
-        let dt = get_frame_time();
-
         // Build a platform-agnostic InputFrame from Macroquad input APIs.
         let mut input = InputFrame::default();
-
-        // --- Desktop keyboard/gamepad movement mapping (WASD / arrow keys) ---
-        if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
-            input.move_x -= 1.0;
-        }
-        if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
-            input.move_x += 1.0;
-        }
-        if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
-            input.move_y -= 1.0;
-        }
-        if is_key_down(KeyCode::S) || is_key_down(KeyCode::Down) {
-            input.move_y += 1.0;
-        }
-
-        // Normalize diagonal movement for keyboard
-        let mag = (input.move_x * input.move_x + input.move_y * input.move_y).sqrt();
-        if mag > 1.0 {
-            input.move_x /= mag;
-            input.move_y /= mag;
-        }
 
         // Mobile touch: collect touches for pointer and tap detection (no joystick)
         let mut touch_pointer: Option<Vec2> = None;
@@ -181,9 +155,6 @@ async fn main() {
         } else {
             None
         };
-
-        // Update game state using platform-agnostic logic
-        update_world(&mut world, &input, dt);
 
         // Handle HUD input and placement (screen-space)
         // Toolbar geometry
