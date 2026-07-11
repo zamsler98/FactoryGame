@@ -1,12 +1,14 @@
-use game_core::{BuildingSpec, InstanceId, Rotation, TileGrid, TilePos};
+use game_core::{BuildingKind, InstanceId, PlacementError, Rotation, TileGrid, TilePos, World};
 
+/// Place a building through the `World` so the factory simulation registers
+/// its runtime state alongside the grid footprint.
 pub fn try_place_building(
-    grid: &mut TileGrid,
-    spec: &BuildingSpec,
+    world: &mut World,
+    kind: BuildingKind,
     origin: TilePos,
     rot: Rotation,
-) -> Result<InstanceId, game_core::PlacementError> {
-    grid.place(spec, origin, rot)
+) -> Result<InstanceId, PlacementError> {
+    world.place_building(kind, origin, rot)
 }
 
 // A minimal snapshot type for the renderer
