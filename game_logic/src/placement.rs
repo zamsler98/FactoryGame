@@ -3,7 +3,7 @@ use game_core::{
 };
 
 /// Place a building through the `World` so the factory simulation registers
-/// its runtime state and the player's inventory is charged for it.
+/// its runtime state.
 pub fn try_place_building(
     world: &mut World,
     kind: BuildingKind,
@@ -13,7 +13,7 @@ pub fn try_place_building(
     world.place_building(kind, origin, rot)
 }
 
-/// Mine (remove) whatever building sits on `tile`, returning it to inventory.
+/// Mine (remove) whatever building sits on `tile`.
 pub fn mine_at(world: &mut World, tile: TilePos) -> bool {
     if let Some(id) = world.tile_grid.tile_occupant(tile) {
         world.remove_building(id).is_some()

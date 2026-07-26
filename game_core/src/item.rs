@@ -1,13 +1,10 @@
-//! Item definitions: everything that can sit in a machine, on a belt, or in
-//! the player's inventory — raw resources, smelted plates, intermediate
-//! products, and the building items you place on the map.
+//! Item definitions: everything that can sit in a machine or move on a belt —
+//! raw resources, smelted plates, and intermediate products. Buildings you can
+//! place are items too — see `building.rs` for the `ItemKind` <-> `BuildingKind`
+//! map (buildings place freely, so this map is only used for names/colors).
 //!
 //! To add a new item, add a variant, give it a `name`, add it to `ALL`, and
-//! (if machines craft it) add a recipe in `recipe.rs`. Buildings you can place
-//! are items too — see `building.rs` for the `ItemKind` <-> `BuildingKind` map.
-
-/// Seconds of machine operation one unit of a fuel item provides.
-pub const COAL_ENERGY: f32 = 8.0;
+//! (if machines craft it) add a recipe in `recipe.rs`.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ItemKind {
@@ -73,18 +70,5 @@ impl ItemKind {
             ItemKind::AssemblingMachine => "Assembling Machine",
             ItemKind::WoodenChest => "Wooden Chest",
         }
-    }
-
-    /// Energy (seconds of operation) this item yields when burned as fuel, or
-    /// `None` if it is not a fuel. Burner machines only accept fuel items.
-    pub fn fuel_energy(self) -> Option<f32> {
-        match self {
-            ItemKind::Coal => Some(COAL_ENERGY),
-            _ => None,
-        }
-    }
-
-    pub fn is_fuel(self) -> bool {
-        self.fuel_energy().is_some()
     }
 }

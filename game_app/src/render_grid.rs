@@ -218,7 +218,7 @@ pub fn draw_items(items: &[ItemView]) {
     }
 }
 
-/// Draw machine status overlays: work progress bar, fuel pip, buffer counts.
+/// Draw machine status overlays: work progress bar and buffer counts.
 pub fn draw_machine_overlays(machines: &[MachineView]) {
     for m in machines {
         let x = m.origin.x as f32 * TILE_PX;
@@ -235,15 +235,6 @@ pub fn draw_machine_overlays(machines: &[MachineView]) {
                 bar_h,
                 Color::new(1.0, 0.85, 0.2, 0.9),
             );
-        }
-        // Fuel pip: green when a burner has fuel, red when starved.
-        if m.is_burner {
-            let c = if m.fueled {
-                Color::new(0.2, 0.9, 0.3, 0.95)
-            } else {
-                Color::new(0.95, 0.25, 0.2, 0.95)
-            };
-            draw_circle(x + TILE_PX - 5.0, y + 5.0, 3.0, c);
         }
         if let Some(label) = &m.label {
             draw_text(label, x + 3.0, y + 12.0, 14.0, BLACK);

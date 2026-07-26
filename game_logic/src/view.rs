@@ -17,10 +17,6 @@ pub struct MachineView {
     pub kind: BuildingKind,
     /// 0.0..1.0 while the machine is actively working.
     pub progress: Option<f32>,
-    /// True if this is a burner that currently has fuel to run on.
-    pub fueled: bool,
-    /// Whether this building is a burner at all (draws a fuel pip).
-    pub is_burner: bool,
     /// Small overlay text (buffer counts / selected recipe).
     pub label: Option<String>,
 }
@@ -54,12 +50,7 @@ pub fn factory_snapshot(world: &World) -> FactorySnapshot {
                     });
                 }
             }
-            BuildingState::Miner {
-                fuel,
-                burn,
-                progress,
-                output,
-            } => {
+            BuildingState::Miner { progress, output } => {
                 if let Some(kind) = output {
                     items.push(ItemView {
                         x: ox + 0.5,
@@ -71,14 +62,10 @@ pub fn factory_snapshot(world: &World) -> FactorySnapshot {
                     origin: inst.origin,
                     kind: BuildingKind::Miner,
                     progress: output.is_none().then_some(*progress),
-                    fueled: *burn > 0.0 || *fuel > 0,
-                    is_burner: true,
                     label: None,
                 });
             }
             BuildingState::Furnace {
-                fuel,
-                burn,
                 input,
                 craft,
                 output,
@@ -89,8 +76,6 @@ pub fn factory_snapshot(world: &World) -> FactorySnapshot {
                     origin: inst.origin,
                     kind: BuildingKind::Furnace,
                     progress: craft.as_ref().map(|c| c.progress),
-                    fueled: *burn > 0.0 || *fuel > 0,
-                    is_burner: true,
                     label: Some(format!("{in_n}/{out_n}")),
                 });
             }
@@ -122,8 +107,6 @@ pub fn factory_snapshot(world: &World) -> FactorySnapshot {
                     origin: inst.origin,
                     kind: BuildingKind::Assembler,
                     progress: craft.as_ref().map(|c| c.progress),
-                    fueled: true,
-                    is_burner: false,
                     label: Some(format!("{label} {out_n}")),
                 });
             }
@@ -133,8 +116,6 @@ pub fn factory_snapshot(world: &World) -> FactorySnapshot {
                     origin: inst.origin,
                     kind: BuildingKind::Chest,
                     progress: None,
-                    fueled: true,
-                    is_burner: false,
                     label: (total > 0).then(|| total.to_string()),
                 });
             }

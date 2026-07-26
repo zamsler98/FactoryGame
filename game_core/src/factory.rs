@@ -4,8 +4,9 @@
 //! `InstanceId`. `Factory::tick` runs two deterministic phases over the
 //! instances in id order:
 //!
-//! 1. progress — miners burn fuel and mine the patch under them, belts slide
-//!    their item, furnaces/assemblers burn fuel/craft, inserters swing.
+//! 1. progress — miners mine the patch under them, belts slide their item,
+//!    furnaces/assemblers craft, inserters swing. Machines run for free (no
+//!    fuel/electricity — a documented simplification).
 //! 2. transfer — items move between buildings. Miners drop directly onto the
 //!    tile they face; belts hand off to the next belt; everything else is
 //!    moved by inserters (grab from behind, drop in front) — just like
@@ -28,8 +29,6 @@ pub const MINER_PERIOD: f32 = 1.0;
 pub const CONVEYOR_SPEED: f32 = 2.0;
 /// Seconds for an inserter to move one item.
 pub const INSERTER_SWING: f32 = 0.8;
-/// Max fuel units a burner building holds.
-pub const FUEL_CAP: u32 = 5;
 /// Max items a furnace holds in its input (and output) buffer.
 pub const FURNACE_INPUT_CAP: u32 = 5;
 pub const FURNACE_OUTPUT_CAP: u32 = 5;
@@ -59,17 +58,11 @@ pub enum BuildingState {
         item: Option<ConveyorItem>,
     },
     Miner {
-        /// Coal units waiting in the fuel slot.
-        fuel: u32,
-        /// Energy (seconds) left in the currently burning fuel.
-        burn: f32,
         /// Mining progress 0.0..1.0; paused while `output` is occupied.
         progress: f32,
         output: Option<ItemKind>,
     },
     Furnace {
-        fuel: u32,
-        burn: f32,
         /// Input buffer: one stack of a single ore kind.
         input: Option<(ItemKind, u32)>,
         craft: Option<CraftInProgress>,
@@ -98,14 +91,10 @@ impl BuildingState {
         match kind {
             BuildingKind::Belt => BuildingState::Belt { item: None },
             BuildingKind::Miner => BuildingState::Miner {
-                fuel: 0,
-                burn: 0.0,
                 progress: 0.0,
                 output: None,
             },
             BuildingKind::Furnace => BuildingState::Furnace {
-                fuel: 0,
-                burn: 0.0,
                 input: None,
                 craft: None,
                 output: None,
@@ -189,29 +178,18 @@ impl Factory {
                         item.progress = (item.progress + CONVEYOR_SPEED * dt).min(1.0);
                     }
                 }
-                BuildingState::Miner {
-                    fuel,
-                    burn,
-                    progress,
-                    output,
-                } => {
+                BuildingState::Miner { progress, output } => {
                     if output.is_none() {
-                        refuel(fuel, burn);
-                        if *burn > 0.0 {
-                            *progress += dt / MINER_PERIOD;
-                            *burn -= dt;
-                            if *progress >= 1.0 {
-                                *progress = 0.0;
-                                if let Some(pos) = origin {
-                                    *output = resources.mine(pos);
-                                }
+                        *progress += dt / MINER_PERIOD;
+                        if *progress >= 1.0 {
+                            *progress = 0.0;
+                            if let Some(pos) = origin {
+                                *output = resources.mine(pos);
                             }
                         }
                     }
                 }
                 BuildingState::Furnace {
-                    fuel,
-                    burn,
                     input,
                     craft,
                     output,
@@ -239,23 +217,18 @@ impl Factory {
                             }
                         }
                     }
-                    // Burn fuel to advance the active craft.
+                    // Advance the active craft (no fuel required).
                     if let Some(c) = craft {
-                        refuel(fuel, burn);
-                        if *burn > 0.0 {
-                            let dur = recipe(c.recipe).map_or(1.0, |r| r.duration);
-                            c.progress += dt / dur;
-                            *burn -= dt;
-                            if c.progress >= 1.0 {
-                                if let Some(r) = recipe(c.recipe) {
-                                    for out in r.outputs {
-                                        deposit_stack(output, out.item, out.count);
-                                        *self.produced.entry(out.item).or_insert(0) +=
-                                            out.count as u64;
-                                    }
+                        let dur = recipe(c.recipe).map_or(1.0, |r| r.duration);
+                        c.progress += dt / dur;
+                        if c.progress >= 1.0 {
+                            if let Some(r) = recipe(c.recipe) {
+                                for out in r.outputs {
+                                    deposit_stack(output, out.item, out.count);
+                                    *self.produced.entry(out.item).or_insert(0) += out.count as u64;
                                 }
-                                *craft = None;
                             }
+                            *craft = None;
                         }
                     }
                 }
@@ -441,14 +414,6 @@ impl Factory {
     }
 }
 
-/// Refuel a burner: if nothing is burning and coal is queued, start a unit.
-fn refuel(fuel: &mut u32, burn: &mut f32) {
-    if *burn <= 0.0 && *fuel > 0 {
-        *fuel -= 1;
-        *burn += ItemKind::Coal.fuel_energy().unwrap_or(0.0);
-    }
-}
-
 /// Add `count` of `item` to a single-stack buffer that already holds `item`
 /// (or is empty).
 fn deposit_stack(slot: &mut Option<(ItemKind, u32)>, item: ItemKind, count: u32) {
@@ -488,8 +453,9 @@ fn take_one(state: &mut BuildingState, item: ItemKind) {
 fn can_accept(state: &BuildingState, item: ItemKind) -> bool {
     match state {
         BuildingState::Belt { item: slot } => slot.is_none(),
-        BuildingState::Miner { fuel, .. } => item.is_fuel() && *fuel < FUEL_CAP,
-        BuildingState::Furnace { fuel, input, .. } => furnace_accepts(item, *fuel, input),
+        // Miners produce ore; they take no input.
+        BuildingState::Miner { .. } => false,
+        BuildingState::Furnace { input, .. } => furnace_accepts(item, input),
         BuildingState::Assembler {
             recipe: sel,
             inputs,
@@ -513,25 +479,14 @@ fn accept(state: &mut BuildingState, item: ItemKind) -> bool {
             });
             true
         }
-        BuildingState::Miner { fuel, .. } => {
-            if item.is_fuel() && *fuel < FUEL_CAP {
-                *fuel += 1;
-                true
-            } else {
-                false
-            }
-        }
-        BuildingState::Furnace { fuel, input, .. } => {
-            if !furnace_accepts(item, *fuel, input) {
+        BuildingState::Miner { .. } => false,
+        BuildingState::Furnace { input, .. } => {
+            if !furnace_accepts(item, input) {
                 return false;
             }
-            if item.is_fuel() && smelting_recipe_for(item).is_none() {
-                *fuel += 1;
-            } else {
-                match input {
-                    None => *input = Some((item, 1)),
-                    Some((_, n)) => *n += 1,
-                }
+            match input {
+                None => *input = Some((item, 1)),
+                Some((_, n)) => *n += 1,
             }
             true
         }
@@ -558,11 +513,8 @@ fn accept(state: &mut BuildingState, item: ItemKind) -> bool {
     }
 }
 
-fn furnace_accepts(item: ItemKind, fuel: u32, input: &Option<(ItemKind, u32)>) -> bool {
-    // Fuel items with no smelting recipe (coal) go to the fuel slot.
-    if item.is_fuel() && smelting_recipe_for(item).is_none() {
-        return fuel < FUEL_CAP;
-    }
+fn furnace_accepts(item: ItemKind, input: &Option<(ItemKind, u32)>) -> bool {
+    // Only smeltable ore is accepted, into the input buffer.
     if smelting_recipe_for(item).is_none() {
         return false;
     }

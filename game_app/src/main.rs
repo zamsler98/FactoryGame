@@ -1,13 +1,13 @@
 //! game_app: Macroquad application glue.
-//! - captures platform input
-//! - drives building placement / mining / crafting through `game_logic`
+//! - captures platform input (touch + mouse/keyboard)
+//! - drives building placement / mining through `game_logic`
 //! - renders the world and the HUD
 //!
 //! Only this crate depends on `macroquad`.
 
 use game_core::{
-    assembler_recipes, hand_recipes, recipe, BuildingKind, BuildingState, InstanceId, ItemKind,
-    RecipeId, Rotation, TilePos, World,
+    assembler_recipes, recipe, BuildingKind, BuildingState, InstanceId, RecipeId, Rotation,
+    TilePos, World,
 };
 use game_logic::{update_world, InputFrame};
 use macroquad::prelude::*;
@@ -70,8 +70,6 @@ async fn main() {
     let mut selected_inst: Option<InstanceId> = None;
     // Mine mode replaces right-click on touch: when on, a tap removes a building.
     let mut mine_mode = false;
-    // The right-hand inventory/crafting panel can be hidden to free screen space.
-    let mut show_panel = true;
 
     // Recipe options an assembler can cycle through: None + each crafting recipe.
     let mut asm_options: Vec<Option<RecipeId>> = vec![None];
@@ -81,9 +79,11 @@ async fn main() {
         let dt = get_frame_time();
         let sw = screen_width();
         let sh = screen_height();
-        let panel_x = if show_panel { sw - PANEL_W } else { sw };
-        // Size the toolbar buttons to fit the available width (below the panel),
-        // so all buildings + Rotate + Mine stay on screen on narrow phones.
+        // The inspector panel (shown only when a building is selected) occupies
+        // the right strip down to the toolbar.
+        let panel_x = sw - PANEL_W;
+        // Size the toolbar buttons to fit the full width, so all buildings +
+        // Rotate + Mine stay on screen on narrow phones.
         let n_tools = (BuildingKind::ALL.len() + 2) as f32;
         let tb_gap = 6.0;
         // The toolbar runs the full width along the bottom; the side panel stops
@@ -235,7 +235,6 @@ async fn main() {
         {
             let mut x = HUD_MARGIN;
             for kind in BuildingKind::ALL {
-                let count = world.inventory.count(kind.item());
                 draw_rectangle(
                     x,
                     toolbar_y,
@@ -253,11 +252,12 @@ async fn main() {
                         Color::new(1.0, 1.0, 0.0, 0.95),
                     );
                 }
+                // Short name label (buildings place freely, so no counts).
                 draw_text(
-                    &format!("{count}"),
+                    &short(kind.name()),
                     x + 4.0,
                     toolbar_y + btn - 6.0,
-                    18.0,
+                    15.0,
                     BLACK,
                 );
                 if let Some(c) = left_click {
@@ -298,104 +298,34 @@ async fn main() {
             draw_text(&status, HUD_MARGIN, toolbar_y - 8.0, 18.0, WHITE);
         }
 
-        // ---- Panel toggle (top-right corner, always visible) ----
-        {
-            let bw = 40.0;
-            let bx = sw - bw - HUD_MARGIN;
-            let by = HUD_MARGIN;
-            let label = if show_panel { ">>" } else { "<<" };
-            if button(bx, by, bw, 28.0, label, true, left_click) {
-                show_panel = !show_panel;
-                ui_consumed = true;
-            }
+        // ---- Right panel: selected-building inspector (only when something is
+        // selected). Stops above the full-width toolbar so it never covers the
+        // buttons.
+        if selected_inst.is_some() {
+            draw_rectangle(
+                panel_x,
+                0.0,
+                PANEL_W,
+                toolbar_y,
+                Color::new(0.08, 0.08, 0.10, 0.92),
+            );
         }
-
-        // ---- Right panel: inventory / crafting / inspector ----
-        // Stops above the full-width toolbar so it never covers the buttons.
-        draw_rectangle(
-            panel_x,
-            0.0,
-            PANEL_W,
-            toolbar_y,
-            Color::new(0.08, 0.08, 0.10, 0.92),
-        );
         let mut y = 10.0;
-        draw_text("INVENTORY", panel_x + 10.0, y + 12.0, 20.0, WHITE);
-        y += ROW_H;
-        for (item, n) in world.inventory.stacks() {
-            draw_rectangle(panel_x + 10.0, y, 14.0, 14.0, render_grid::item_color(item));
-            draw_text(
-                &format!("{}  x{}", item.name(), n),
-                panel_x + 30.0,
-                y + 12.0,
-                16.0,
-                WHITE,
-            );
-            y += ROW_H;
-        }
-
-        // Crafting queue
-        y += 8.0;
-        draw_text("HAND CRAFTING", panel_x + 10.0, y + 12.0, 20.0, WHITE);
-        y += ROW_H;
-        if let Some(active) = world.crafting.active() {
-            let name = recipe(active.recipe).map(|r| r.name).unwrap_or("?");
-            draw_text(
-                &format!("Crafting {} {:.0}%", name, active.progress * 100.0),
-                panel_x + 10.0,
-                y + 12.0,
-                15.0,
-                YELLOW,
-            );
-        } else {
-            draw_text("Crafting: idle", panel_x + 10.0, y + 12.0, 15.0, GRAY);
-        }
-        let pending = world.crafting.pending().len();
-        if pending > 0 {
-            draw_text(
-                &format!("(+{pending})"),
-                panel_x + 190.0,
-                y + 12.0,
-                15.0,
-                GRAY,
-            );
-        }
-        y += ROW_H;
-        for r in hand_recipes() {
-            let can = r
-                .inputs
-                .iter()
-                .all(|i| world.inventory.count(i.item) >= i.count);
-            let label = format!("{}  ({})", r.name, ingredients_label(r));
-            if button(
-                panel_x + 10.0,
-                y,
-                PANEL_W - 20.0,
-                ROW_H - 3.0,
-                &label,
-                true,
-                left_click,
-            ) {
-                world.queue_craft(r.id);
-                ui_consumed = true;
-            }
-            if !can {
-                draw_rectangle(
-                    panel_x + 10.0,
-                    y,
-                    PANEL_W - 20.0,
-                    ROW_H - 3.0,
-                    Color::new(0.0, 0.0, 0.0, 0.4),
-                );
-            }
-            y += ROW_H;
-        }
-
-        // ---- Inspector for the selected building ----
-        y += 8.0;
         if let Some(id) = selected_inst {
             if let Some(info) = inspector_info(&world, id) {
                 draw_text("SELECTED", panel_x + 10.0, y + 12.0, 20.0, WHITE);
+                if button(
+                    panel_x + PANEL_W - 50.0,
+                    y - 2.0,
+                    40.0,
+                    22.0,
+                    "X",
+                    true,
+                    left_click,
+                ) {
+                    selected_inst = None;
+                    ui_consumed = true;
+                }
                 y += ROW_H;
                 draw_text(&info.title, panel_x + 10.0, y + 12.0, 16.0, SKYBLUE);
                 y += ROW_H;
@@ -404,62 +334,31 @@ async fn main() {
                     y += ROW_H - 4.0;
                 }
                 y += 4.0;
-                match info.kind {
-                    BuildingKind::Assembler => {
-                        let cur = asm_options
-                            .iter()
-                            .position(|o| *o == info.assembler_recipe)
-                            .unwrap_or(0);
-                        let n = asm_options.len();
-                        if button(panel_x + 10.0, y, 60.0, ROW_H, "< prev", true, left_click) {
-                            world.set_assembler_recipe(id, asm_options[(cur + n - 1) % n]);
-                            ui_consumed = true;
-                        }
-                        if button(panel_x + 80.0, y, 60.0, ROW_H, "next >", true, left_click) {
-                            world.set_assembler_recipe(id, asm_options[(cur + 1) % n]);
-                            ui_consumed = true;
-                        }
+                if info.kind == BuildingKind::Assembler {
+                    let cur = asm_options
+                        .iter()
+                        .position(|o| *o == info.assembler_recipe)
+                        .unwrap_or(0);
+                    let n = asm_options.len();
+                    if button(panel_x + 10.0, y, 60.0, ROW_H, "< prev", true, left_click) {
+                        world.set_assembler_recipe(id, asm_options[(cur + n - 1) % n]);
+                        ui_consumed = true;
                     }
-                    BuildingKind::Chest => {
-                        let clicked = button(
-                            panel_x + 10.0,
-                            y,
-                            120.0,
-                            ROW_H,
-                            "Take all",
-                            true,
-                            left_click,
-                        );
-                        if clicked {
-                            world.take_all_from_chest(id);
-                            ui_consumed = true;
-                        }
+                    if button(panel_x + 80.0, y, 60.0, ROW_H, "next >", true, left_click) {
+                        world.set_assembler_recipe(id, asm_options[(cur + 1) % n]);
+                        ui_consumed = true;
                     }
-                    BuildingKind::Miner | BuildingKind::Furnace => {
-                        let has_coal = world.inventory.count(ItemKind::Coal) > 0;
-                        if button(
-                            panel_x + 10.0,
-                            y,
-                            150.0,
-                            ROW_H,
-                            "Add coal fuel",
-                            has_coal,
-                            left_click,
-                        ) {
-                            world.add_fuel_from_inventory(id);
-                            ui_consumed = true;
-                        }
-                    }
-                    _ => {}
                 }
             } else {
                 selected_inst = None;
             }
         }
 
-        // Any click on the right panel or the toolbar strip is UI, not world.
+        // A click on the toolbar strip is always UI; a click on the inspector
+        // panel is UI only while that panel is actually visible.
         if let Some(c) = left_click {
-            if c.x >= panel_x || c.y >= toolbar_y {
+            let on_panel = selected_inst.is_some() && c.x >= panel_x && c.y < toolbar_y;
+            if on_panel || c.y >= toolbar_y {
                 ui_consumed = true;
             }
         }
@@ -520,9 +419,6 @@ fn ingredients_label(r: &game_core::Recipe) -> String {
 }
 
 fn can_place_here(world: &World, kind: BuildingKind, tile: TilePos, rot: Rotation) -> bool {
-    if world.inventory.count(kind.item()) == 0 {
-        return false;
-    }
     if kind.requires_resource() && world.resources.get(tile).is_none() {
         return false;
     }
@@ -579,20 +475,13 @@ fn inspector_info(world: &World, id: InstanceId) -> Option<InspectorInfo> {
             Some(it) => format!("carrying {}", it.kind.name()),
             None => "empty".to_string(),
         }),
-        BuildingState::Miner { fuel, output, .. } => {
-            lines.push(format!("fuel: {fuel} coal"));
+        BuildingState::Miner { output, .. } => {
             lines.push(match output {
                 Some(o) => format!("holding {}", o.name()),
                 None => "mining...".to_string(),
             });
         }
-        BuildingState::Furnace {
-            fuel,
-            input,
-            output,
-            ..
-        } => {
-            lines.push(format!("fuel: {fuel} coal"));
+        BuildingState::Furnace { input, output, .. } => {
             lines.push(match input {
                 Some((k, n)) => format!("in: {} x{}", k.name(), n),
                 None => "in: empty".to_string(),

@@ -35,10 +35,13 @@ game_core  ←  game_logic  ←  game_app
 
 ### Factorio-style model
 
-- **Items** (`item.rs`) are the universal currency — raw ore, smelted plates, intermediates, *and* the building items you place. `BuildingKind::item()` maps a building to the item consumed to place it (returned when mined).
+Simplified for mobile: **no player inventory, no hand-crafting, and no fuel** — buildings are placed freely (unlimited) and machines run for free. The item-flow simulation is the core of the game.
+
+- **Items** (`item.rs`) are what flows on belts and through machines — raw ore, smelted plates, intermediates. Building items still exist (`BuildingKind::item()`) but are only used for names/colors; placement no longer consumes them.
 - **Resources** (`resource.rs`) are finite ore patches under the grid; a `Miner` must sit on one and depletes it.
-- **Recipes** (`recipe.rs`) are shared: `Smelting` (furnaces, auto-selected from input ore) and `Crafting` (assemblers + the player's hands).
-- **Buildings** (`building.rs` / `factory.rs`): `Belt`, `Miner`, `Furnace`, `Inserter`, `Assembler`, `Chest`. Miners/furnaces are **burners** (consume coal fuel). Belts only hand off to other belts; loading/unloading machines requires **inserters** (grab from behind, drop in front) — like Factorio. Assemblers run a player-selected recipe (no electricity yet — a documented simplification).
+- **Recipes** (`recipe.rs`) are shared: `Smelting` (furnaces, auto-selected from input ore) and `Crafting` (assemblers, player-selected).
+- **Buildings** (`building.rs` / `factory.rs`): `Belt`, `Miner`, `Furnace`, `Inserter`, `Assembler`, `Chest`. Machines need no fuel/electricity (a documented simplification). Belts only hand off to other belts; loading/unloading machines requires **inserters** (grab from behind, drop in front) — like Factorio. Assemblers run a player-selected recipe.
+- **Controls** are touch-first: single-finger drag pans, two-finger pinch zooms, a tap places/selects, and an on-screen **Mine** toggle removes buildings. Desktop mouse/keyboard still work. Selecting a building opens a read-only inspector panel (with recipe cycling for assemblers).
 
 ### Key types
 
