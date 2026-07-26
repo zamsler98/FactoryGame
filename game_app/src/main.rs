@@ -62,13 +62,7 @@ async fn main() {
 
     let mut prev_mouse: Option<Vec2> = None;
     let mut mouse_press: Option<Vec2> = None;
-
-    // Touch gesture state (mobile). Once any touch is seen we treat this as a
-    // touch device and stop reading the emulated mouse, to avoid double input.
-    let mut touch_seen = false;
-    let mut touch_start: Option<Vec2> = None;
-    let mut prev_touch: Option<Vec2> = None;
-    let mut touch_moved = false;
+    // Finger separation last frame, for two-finger pinch-to-zoom.
     let mut prev_pinch: Option<f32> = None;
 
     let mut selected_kind = BuildingKind::Belt;
@@ -92,148 +86,98 @@ async fn main() {
         // so all buildings + Rotate + Mine stay on screen on narrow phones.
         let n_tools = (BuildingKind::ALL.len() + 2) as f32;
         let tb_gap = 6.0;
-        let tb_avail = panel_x - 2.0 * HUD_MARGIN;
+        // The toolbar runs the full width along the bottom; the side panel stops
+        // above it (see below) so no building button hides behind the panel.
+        let tb_avail = sw - 2.0 * HUD_MARGIN;
         let btn = ((tb_avail - tb_gap * (n_tools - 1.0)) / n_tools).clamp(34.0, BTN_SIZE);
         let toolbar_y = sh - HUD_MARGIN - btn;
         let mut input = InputFrame::default();
 
-        // `left_click` is a discrete "act here" tap in screen space, fed by both
-        // a mouse click-without-drag (desktop) and a finger tap (mobile). `pointer`
-        // tracks the current cursor/finger for the placement preview.
+        // `left_click` is a discrete "act here" tap in screen space. `pointer`
+        // tracks the cursor / finger for the placement preview. On the web,
+        // miniquad synthesizes mouse events from single-finger touches, so the
+        // same mouse path drives both desktop and mobile; `touches()` is used
+        // only for the two-finger pinch that a mouse cannot express.
         let mut left_click: Option<Vec2> = None;
-        let mut right_click = false;
-        let mut pointer = vec2(mouse_position().0, mouse_position().1);
-        let over_world = |p: Vec2| p.x < panel_x && p.y < toolbar_y;
+        let pointer = vec2(mouse_position().0, mouse_position().1);
 
-        // ---- Touch (mobile): 1 finger pans, 2 fingers pinch-zoom, tap acts ----
+        // ---- Two-finger pinch-to-zoom (mobile) ----
         let active = touches();
-        if !active.is_empty() {
-            touch_seen = true;
-        }
-        if touch_seen {
-            match active.len() {
-                1 => {
-                    let t = &active[0];
-                    pointer = t.position;
-                    match t.phase {
-                        TouchPhase::Started => {
-                            touch_start = Some(t.position);
-                            prev_touch = Some(t.position);
-                            touch_moved = false;
-                        }
-                        TouchPhase::Moved | TouchPhase::Stationary => {
-                            // Only pan when the drag began over the world, so
-                            // dragging on a panel doesn't scroll the map.
-                            if let (Some(prev), Some(start)) = (prev_touch, touch_start) {
-                                if over_world(start) {
-                                    let delta = camera.screen_to_world(prev)
-                                        - camera.screen_to_world(t.position);
-                                    camera.target += delta;
-                                }
-                            }
-                            prev_touch = Some(t.position);
-                            if touch_start
-                                .is_some_and(|s| s.distance(t.position) > TAP_MAX_MOVEMENT)
-                            {
-                                touch_moved = true;
-                            }
-                        }
-                        TouchPhase::Ended => {
-                            if !touch_moved {
-                                if let Some(s) = touch_start {
-                                    if s.distance(t.position) < TAP_MAX_MOVEMENT {
-                                        left_click = Some(t.position);
-                                    }
-                                }
-                            }
-                            touch_start = None;
-                            prev_touch = None;
-                            prev_pinch = None;
-                        }
-                        TouchPhase::Cancelled => {
-                            touch_start = None;
-                            prev_touch = None;
-                            prev_pinch = None;
-                        }
-                    }
-                }
-                n if n >= 2 => {
-                    // Pinch: scale zoom by the change in finger separation.
-                    let dist = active[0].position.distance(active[1].position);
-                    if let Some(prev) = prev_pinch {
-                        if prev > 1.0 {
-                            zoom = (zoom * (dist / prev)).clamp(0.3, 4.0);
-                        }
-                    }
-                    prev_pinch = Some(dist);
-                    // Two fingers cancel any pending tap and suspend one-finger pan.
-                    touch_moved = true;
-                    prev_touch = None;
-                }
-                _ => {
-                    prev_touch = None;
-                    prev_pinch = None;
+        let pinching = active.len() >= 2;
+        if pinching {
+            let dist = active[0].position.distance(active[1].position);
+            if let Some(prev) = prev_pinch {
+                if prev > 1.0 {
+                    zoom = (zoom * (dist / prev)).clamp(0.3, 4.0);
                 }
             }
+            prev_pinch = Some(dist);
         } else {
-            // ---- Desktop mouse + keyboard (only when not a touch device) ----
-            let (_, wheel_y) = mouse_wheel();
-            if wheel_y != 0.0 {
-                zoom = (zoom * if wheel_y > 0.0 { 1.1 } else { 1.0 / 1.1 }).clamp(0.3, 4.0);
-            }
-
-            let keys = [
-                (KeyCode::Key1, BuildingKind::Belt),
-                (KeyCode::Key2, BuildingKind::Miner),
-                (KeyCode::Key3, BuildingKind::Furnace),
-                (KeyCode::Key4, BuildingKind::Inserter),
-                (KeyCode::Key5, BuildingKind::Assembler),
-                (KeyCode::Key6, BuildingKind::Chest),
-            ];
-            for (k, kind) in keys {
-                if is_key_pressed(k) {
-                    selected_kind = kind;
-                }
-            }
-            if is_key_pressed(KeyCode::R) {
-                selected_rotation = selected_rotation.rotated_cw();
-            }
-            let pan_speed = 400.0 * dt / zoom;
-            if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
-                camera.target.x -= pan_speed;
-            }
-            if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
-                camera.target.x += pan_speed;
-            }
-            if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
-                camera.target.y -= pan_speed;
-            }
-            if is_key_down(KeyCode::S) || is_key_down(KeyCode::Down) {
-                camera.target.y += pan_speed;
-            }
-
-            // Left-drag pans, left-click (no drag) acts, right-click mines.
-            if is_mouse_button_pressed(MouseButton::Left) {
-                mouse_press = Some(pointer);
-            }
-            if is_mouse_button_down(MouseButton::Left) {
-                if let Some(prev) = prev_mouse {
-                    let delta = camera.screen_to_world(prev) - camera.screen_to_world(pointer);
-                    camera.target += delta;
-                }
-                prev_mouse = Some(pointer);
-            } else {
-                prev_mouse = None;
-            }
-            if is_mouse_button_released(MouseButton::Left) {
-                if let Some(press) = mouse_press.take() {
-                    if press.distance(pointer) < TAP_MAX_MOVEMENT {
-                        left_click = Some(pointer);
-                    }
-                }
-            }
-            right_click = is_mouse_button_pressed(MouseButton::Right);
+            prev_pinch = None;
         }
+
+        // ---- Zoom (mouse wheel) + keyboard select/rotate/pan (desktop) ----
+        let (_, wheel_y) = mouse_wheel();
+        if wheel_y != 0.0 {
+            zoom = (zoom * if wheel_y > 0.0 { 1.1 } else { 1.0 / 1.1 }).clamp(0.3, 4.0);
+        }
+        let keys = [
+            (KeyCode::Key1, BuildingKind::Belt),
+            (KeyCode::Key2, BuildingKind::Miner),
+            (KeyCode::Key3, BuildingKind::Furnace),
+            (KeyCode::Key4, BuildingKind::Inserter),
+            (KeyCode::Key5, BuildingKind::Assembler),
+            (KeyCode::Key6, BuildingKind::Chest),
+        ];
+        for (k, kind) in keys {
+            if is_key_pressed(k) {
+                selected_kind = kind;
+                mine_mode = false;
+            }
+        }
+        if is_key_pressed(KeyCode::R) {
+            selected_rotation = selected_rotation.rotated_cw();
+        }
+        let pan_speed = 400.0 * dt / zoom;
+        if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
+            camera.target.x -= pan_speed;
+        }
+        if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
+            camera.target.x += pan_speed;
+        }
+        if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
+            camera.target.y -= pan_speed;
+        }
+        if is_key_down(KeyCode::S) || is_key_down(KeyCode::Down) {
+            camera.target.y += pan_speed;
+        }
+
+        // ---- Drag pans, click/tap (no drag) acts, right-click mines ----
+        // During a pinch we ignore the synthesized mouse so the map doesn't
+        // jump; we also drop any pending tap so the pinch never places.
+        if is_mouse_button_pressed(MouseButton::Left) {
+            mouse_press = Some(pointer);
+        }
+        if pinching {
+            prev_mouse = None;
+            mouse_press = None;
+        } else if is_mouse_button_down(MouseButton::Left) {
+            if let Some(prev) = prev_mouse {
+                let delta = camera.screen_to_world(prev) - camera.screen_to_world(pointer);
+                camera.target += delta;
+            }
+            prev_mouse = Some(pointer);
+        } else {
+            prev_mouse = None;
+        }
+        if is_mouse_button_released(MouseButton::Left) {
+            if let Some(press) = mouse_press.take() {
+                if press.distance(pointer) < TAP_MAX_MOVEMENT {
+                    left_click = Some(pointer);
+                }
+            }
+        }
+        let right_click = is_mouse_button_pressed(MouseButton::Right);
 
         camera.zoom = vec2(2.0 * zoom / sw, 2.0 * zoom / sh);
         input.pointer = Some((pointer.x, pointer.y));
@@ -367,11 +311,12 @@ async fn main() {
         }
 
         // ---- Right panel: inventory / crafting / inspector ----
+        // Stops above the full-width toolbar so it never covers the buttons.
         draw_rectangle(
             panel_x,
             0.0,
             PANEL_W,
-            sh,
+            toolbar_y,
             Color::new(0.08, 0.08, 0.10, 0.92),
         );
         let mut y = 10.0;
