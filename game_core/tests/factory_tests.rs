@@ -2,8 +2,17 @@ use game_core::*;
 
 fn tick_n(world: &mut World, n: u32, dt: f32) {
     for _ in 0..n {
-        world.update_factory(dt);
+        world.update(dt);
     }
+}
+
+/// Give the player plenty of every building item so placement never fails on
+/// inventory in these focused simulation tests.
+fn stock(world: &mut World) {
+    for kind in BuildingKind::ALL {
+        world.inventory.add(kind.item(), 100);
+    }
+    world.inventory.add(ItemKind::Coal, 100);
 }
 
 fn place(world: &mut World, kind: BuildingKind, x: i32, y: i32, rot: Rotation) -> InstanceId {
@@ -12,141 +21,284 @@ fn place(world: &mut World, kind: BuildingKind, x: i32, y: i32, rot: Rotation) -
         .expect("placement failed")
 }
 
-#[test]
-fn miner_outputs_onto_conveyor() {
-    let mut w = World::new();
-    let miner = place(&mut w, BuildingKind::Miner, 0, 0, Rotation::R0);
-    let belt = place(&mut w, BuildingKind::Conveyor, 1, 0, Rotation::R0);
+fn fuel_miner(world: &mut World, id: InstanceId) {
+    if let Some(BuildingState::Miner { fuel, .. }) = world.factory.state_mut(id) {
+        *fuel = 5;
+    }
+}
 
-    // 1.25s: mining takes 1.0s, then the ore transfers to the belt.
-    tick_n(&mut w, 25, 0.05);
+#[test]
+fn miner_mines_patch_and_outputs_onto_belt() {
+    let mut w = World::new(); // starting field has ore near the origin
+    stock(&mut w);
+    // Find a coal tile from the generated field to place the miner on.
+    let (pos, _) = w
+        .resources
+        .patches()
+        .find(|(_, p)| p.kind == ResourceKind::Coal)
+        .expect("coal patch exists");
+    let miner = place(&mut w, BuildingKind::Miner, pos.x, pos.y, Rotation::R0);
+    fuel_miner(&mut w, miner);
+    let belt = place(&mut w, BuildingKind::Belt, pos.x + 1, pos.y, Rotation::R0);
+
+    tick_n(&mut w, 30, 0.05); // >1s mining + handoff
 
     match w.factory.state(belt) {
-        Some(BuildingState::Conveyor { item: Some(item) }) => {
-            assert_eq!(item.kind, ItemKind::IronOre)
+        Some(BuildingState::Belt { item: Some(item) }) => {
+            assert_eq!(item.kind, ItemKind::Coal)
         }
-        other => panic!("expected ore on belt, got {other:?}"),
+        other => panic!("expected coal on belt, got {other:?}"),
     }
+}
+
+#[test]
+fn miner_without_fuel_does_nothing() {
+    let mut w = World::new();
+    stock(&mut w);
+    let (pos, _) = w
+        .resources
+        .patches()
+        .find(|(_, p)| p.kind == ResourceKind::IronOre)
+        .expect("iron patch exists");
+    let miner = place(&mut w, BuildingKind::Miner, pos.x, pos.y, Rotation::R0);
+    // no fuel added
+    tick_n(&mut w, 60, 0.05);
     match w.factory.state(miner) {
-        Some(BuildingState::Miner { output, .. }) => {
-            assert!(output.is_none(), "miner should have handed off its ore")
+        Some(BuildingState::Miner {
+            output, progress, ..
+        }) => {
+            assert!(output.is_none());
+            assert_eq!(*progress, 0.0, "no fuel means no mining progress");
         }
-        other => panic!("expected miner state, got {other:?}"),
+        other => panic!("expected idle miner, got {other:?}"),
     }
 }
 
 #[test]
-fn miner_respects_rotation() {
-    let mut w = World::new();
-    place(&mut w, BuildingKind::Miner, 5, 5, Rotation::R90); // faces +y
-    let below = place(&mut w, BuildingKind::Conveyor, 5, 6, Rotation::R90);
-    let beside = place(&mut w, BuildingKind::Conveyor, 6, 5, Rotation::R0);
+fn miner_requires_resource_patch() {
+    let mut w = World::empty();
+    stock(&mut w);
+    let err = w
+        .place_building(
+            BuildingKind::Miner,
+            TilePos { x: 500, y: 500 },
+            Rotation::R0,
+        )
+        .expect_err("should fail off-patch");
+    assert!(matches!(err, PlaceError::MissingResource));
+}
 
-    tick_n(&mut w, 25, 0.05);
-
+#[test]
+fn belt_carries_item_between_belts() {
+    let mut w = World::empty();
+    stock(&mut w);
+    let a = place(&mut w, BuildingKind::Belt, 10, 10, Rotation::R0);
+    let b = place(&mut w, BuildingKind::Belt, 11, 10, Rotation::R0);
+    // Seed an item onto belt a directly.
+    if let Some(BuildingState::Belt { item }) = w.factory.state_mut(a) {
+        *item = Some(ConveyorItem {
+            kind: ItemKind::IronPlate,
+            progress: 0.0,
+        });
+    }
+    tick_n(&mut w, 40, 0.05);
     assert!(matches!(
-        w.factory.state(below),
-        Some(BuildingState::Conveyor { item: Some(_) })
-    ));
-    assert!(matches!(
-        w.factory.state(beside),
-        Some(BuildingState::Conveyor { item: None })
+        w.factory.state(b),
+        Some(BuildingState::Belt { item: Some(_) })
     ));
 }
 
 #[test]
-fn ore_flows_through_belts_and_smelts() {
-    let mut w = World::new();
-    place(&mut w, BuildingKind::Miner, 0, 0, Rotation::R0);
-    place(&mut w, BuildingKind::Conveyor, 1, 0, Rotation::R0);
-    place(&mut w, BuildingKind::Conveyor, 2, 0, Rotation::R0);
-    place(&mut w, BuildingKind::Smelter, 3, 0, Rotation::R0);
+fn belt_does_not_auto_load_furnace() {
+    let mut w = World::empty();
+    stock(&mut w);
+    let belt = place(&mut w, BuildingKind::Belt, 10, 10, Rotation::R0);
+    let furnace = place(&mut w, BuildingKind::Furnace, 11, 10, Rotation::R0);
+    if let Some(BuildingState::Belt { item }) = w.factory.state_mut(belt) {
+        *item = Some(ConveyorItem {
+            kind: ItemKind::IronOre,
+            progress: 0.0,
+        });
+    }
+    tick_n(&mut w, 40, 0.05);
+    // Belt still holds the ore; furnace was never loaded (needs an inserter).
+    assert!(matches!(
+        w.factory.state(belt),
+        Some(BuildingState::Belt { item: Some(_) })
+    ));
+    match w.factory.state(furnace) {
+        Some(BuildingState::Furnace { input, .. }) => assert!(input.is_none()),
+        other => panic!("expected furnace, got {other:?}"),
+    }
+}
 
-    // Mine 1s + travel 2 tiles at 2 tiles/s (1s) + smelt 2s = ~4s. Run 6s.
-    tick_n(&mut w, 120, 0.05);
+#[test]
+fn inserter_moves_item_from_belt_to_chest() {
+    let mut w = World::empty();
+    stock(&mut w);
+    let belt = place(&mut w, BuildingKind::Belt, 10, 10, Rotation::R0);
+    // Inserter to the "north" of the belt, facing up (R270 = -y), grabbing from
+    // the belt below it (back = +y) and dropping onto the chest above it.
+    let inserter = place(&mut w, BuildingKind::Inserter, 10, 9, Rotation::R270);
+    let chest = place(&mut w, BuildingKind::Chest, 10, 8, Rotation::R270);
+    if let Some(BuildingState::Belt { item }) = w.factory.state_mut(belt) {
+        *item = Some(ConveyorItem {
+            kind: ItemKind::IronPlate,
+            progress: 1.0,
+        });
+    }
+    tick_n(&mut w, 40, 0.05); // > swing time
+    let _ = inserter;
+    match w.factory.state(chest) {
+        Some(BuildingState::Chest { items }) => {
+            assert_eq!(items.get(&ItemKind::IronPlate).copied(), Some(1));
+        }
+        other => panic!("expected chest with a plate, got {other:?}"),
+    }
+}
 
-    let ingots = w.factory.produced.get(&ItemKind::IronIngot).copied();
+#[test]
+fn furnace_smelts_ore_to_plate_with_fuel() {
+    let mut w = World::empty();
+    stock(&mut w);
+    let furnace = place(&mut w, BuildingKind::Furnace, 10, 10, Rotation::R0);
+    if let Some(BuildingState::Furnace { fuel, input, .. }) = w.factory.state_mut(furnace) {
+        *fuel = 5;
+        *input = Some((ItemKind::IronOre, 3));
+    }
+    tick_n(&mut w, 60, 0.05); // 3s, > 2s smelt
+    let plates = w.factory.produced.get(&ItemKind::IronPlate).copied();
     assert!(
-        ingots.unwrap_or(0) >= 1,
-        "expected at least one ingot, got {ingots:?}"
+        plates.unwrap_or(0) >= 1,
+        "expected an iron plate, got {plates:?}"
     );
 }
 
 #[test]
-fn blocked_conveyor_holds_item_and_miner_waits() {
-    let mut w = World::new();
-    let miner = place(&mut w, BuildingKind::Miner, 0, 0, Rotation::R0);
-    // Belt points at empty ground, so the item can never leave.
-    let belt = place(&mut w, BuildingKind::Conveyor, 1, 0, Rotation::R0);
+fn furnace_without_fuel_does_not_smelt() {
+    let mut w = World::empty();
+    stock(&mut w);
+    let furnace = place(&mut w, BuildingKind::Furnace, 10, 10, Rotation::R0);
+    if let Some(BuildingState::Furnace { input, .. }) = w.factory.state_mut(furnace) {
+        *input = Some((ItemKind::IronOre, 3));
+    }
+    tick_n(&mut w, 100, 0.05);
+    assert_eq!(w.factory.produced.get(&ItemKind::IronPlate).copied(), None);
+}
 
+#[test]
+fn assembler_crafts_gears_from_plates() {
+    let mut w = World::empty();
+    stock(&mut w);
+    let asm = place(&mut w, BuildingKind::Assembler, 10, 10, Rotation::R0);
+    // Recipe 4 = Iron Gear Wheel (2 iron plate -> 1 gear).
+    w.set_assembler_recipe(asm, Some(4));
+    if let Some(BuildingState::Assembler { inputs, .. }) = w.factory.state_mut(asm) {
+        inputs.insert(ItemKind::IronPlate, 10);
+    }
+    tick_n(&mut w, 40, 0.05);
+    match w.factory.state(asm) {
+        Some(BuildingState::Assembler { outputs, .. }) => {
+            assert!(outputs.get(&ItemKind::IronGearWheel).copied().unwrap_or(0) >= 1);
+        }
+        other => panic!("expected assembler, got {other:?}"),
+    }
+}
+
+#[test]
+fn full_chain_mines_and_smelts_iron() {
+    // Miner (on iron) -> belt -> inserter -> furnace (fueled) produces plates.
+    let mut w = World::new();
+    stock(&mut w);
+    let (pos, _) = w
+        .resources
+        .patches()
+        .find(|(_, p)| p.kind == ResourceKind::IronOre)
+        .expect("iron patch");
+    let miner = place(&mut w, BuildingKind::Miner, pos.x, pos.y, Rotation::R0);
+    fuel_miner(&mut w, miner);
+    place(&mut w, BuildingKind::Belt, pos.x + 1, pos.y, Rotation::R0);
+    // Inserter above the belt end pulling from it into a fueled furnace.
+    let ins = place(
+        &mut w,
+        BuildingKind::Inserter,
+        pos.x + 1,
+        pos.y - 1,
+        Rotation::R270,
+    );
+    let _ = ins;
+    let furnace = place(
+        &mut w,
+        BuildingKind::Furnace,
+        pos.x + 1,
+        pos.y - 2,
+        Rotation::R0,
+    );
+    if let Some(BuildingState::Furnace { fuel, .. }) = w.factory.state_mut(furnace) {
+        *fuel = 5;
+    }
     tick_n(&mut w, 200, 0.05); // 10s
-
-    match w.factory.state(belt) {
-        Some(BuildingState::Conveyor { item: Some(item) }) => {
-            assert_eq!(item.kind, ItemKind::IronOre);
-            assert!(item.progress >= 1.0, "item should be stuck at exit edge");
-        }
-        other => panic!("expected stuck ore on belt, got {other:?}"),
-    }
-    // The miner holds one finished ore and pauses; nothing is lost or duplicated.
-    match w.factory.state(miner) {
-        Some(BuildingState::Miner { output, .. }) => assert_eq!(*output, Some(ItemKind::IronOre)),
-        other => panic!("expected miner state, got {other:?}"),
-    }
+    let plates = w.factory.produced.get(&ItemKind::IronPlate).copied();
+    assert!(
+        plates.unwrap_or(0) >= 1,
+        "expected plates from full chain, got {plates:?}"
+    );
 }
 
 #[test]
-fn smelter_buffers_cap_out() {
-    let mut w = World::new();
-    place(&mut w, BuildingKind::Miner, 0, 0, Rotation::R0);
-    let smelter = place(&mut w, BuildingKind::Smelter, 1, 0, Rotation::R0);
-
-    // Long run: smelter output is never emptied (it faces empty ground), so
-    // input and output buffers must both stop at the cap.
-    tick_n(&mut w, 1200, 0.05); // 60s
-
-    match w.factory.state(smelter) {
-        Some(BuildingState::Smelter { input, output, .. }) => {
-            let (_, in_n) = input.expect("input buffer should be backed up");
-            let (out_kind, out_n) = output.expect("output buffer should have ingots");
-            assert!(in_n <= SMELTER_STACK_CAP);
-            assert_eq!(out_kind, ItemKind::IronIngot);
-            assert_eq!(out_n, SMELTER_STACK_CAP);
-        }
-        other => panic!("expected smelter state, got {other:?}"),
-    }
+fn placing_consumes_inventory_and_mining_returns_it() {
+    let mut w = World::empty();
+    w.inventory.add(ItemKind::WoodenChest, 1);
+    assert_eq!(w.inventory.count(ItemKind::WoodenChest), 1);
+    let chest = place(&mut w, BuildingKind::Chest, 10, 10, Rotation::R0);
+    assert_eq!(w.inventory.count(ItemKind::WoodenChest), 0);
+    // Can't place a second: out of items.
+    assert!(matches!(
+        w.place_building(BuildingKind::Chest, TilePos { x: 11, y: 10 }, Rotation::R0),
+        Err(PlaceError::NoItem)
+    ));
+    w.remove_building(chest);
+    assert_eq!(w.inventory.count(ItemKind::WoodenChest), 1);
 }
 
 #[test]
-fn smelter_pushes_output_to_conveyor() {
-    let mut w = World::new();
-    place(&mut w, BuildingKind::Miner, 0, 0, Rotation::R0);
-    place(&mut w, BuildingKind::Smelter, 1, 0, Rotation::R0);
-    let out_belt = place(&mut w, BuildingKind::Conveyor, 2, 0, Rotation::R0);
-
-    tick_n(&mut w, 120, 0.05); // 6s
-
-    match w.factory.state(out_belt) {
-        Some(BuildingState::Conveyor { item: Some(item) }) => {
-            assert_eq!(item.kind, ItemKind::IronIngot)
-        }
-        other => panic!("expected ingot on output belt, got {other:?}"),
+fn mining_a_chest_returns_its_contents() {
+    let mut w = World::empty();
+    w.inventory.add(ItemKind::WoodenChest, 1);
+    let chest = place(&mut w, BuildingKind::Chest, 10, 10, Rotation::R0);
+    if let Some(BuildingState::Chest { items }) = w.factory.state_mut(chest) {
+        items.insert(ItemKind::IronPlate, 7);
     }
+    w.remove_building(chest);
+    assert_eq!(w.inventory.count(ItemKind::IronPlate), 7);
+}
+
+#[test]
+fn hand_crafting_consumes_and_produces() {
+    let mut w = World::empty();
+    w.inventory.add(ItemKind::IronPlate, 2);
+    w.queue_craft(4); // Iron Gear Wheel: 2 plate -> 1 gear
+    tick_n(&mut w, 20, 0.05); // > 0.5s
+    assert_eq!(w.inventory.count(ItemKind::IronGearWheel), 1);
+    assert_eq!(w.inventory.count(ItemKind::IronPlate), 0);
+}
+
+#[test]
+fn hand_crafting_without_ingredients_is_dropped() {
+    let mut w = World::empty();
+    w.queue_craft(4);
+    tick_n(&mut w, 20, 0.05);
+    assert_eq!(w.inventory.count(ItemKind::IronGearWheel), 0);
+    assert!(w.crafting.is_empty());
 }
 
 #[test]
 fn removing_building_clears_state() {
-    let mut w = World::new();
-    place(&mut w, BuildingKind::Miner, 0, 0, Rotation::R0);
-    let belt = place(&mut w, BuildingKind::Conveyor, 1, 0, Rotation::R0);
-
-    tick_n(&mut w, 25, 0.05);
+    let mut w = World::empty();
+    stock(&mut w);
+    let belt = place(&mut w, BuildingKind::Belt, 11, 0, Rotation::R0);
     assert!(w.factory.state(belt).is_some());
-
     w.remove_building(belt);
     assert!(w.factory.state(belt).is_none());
-    assert!(w.tile_grid.tile_occupant(TilePos { x: 1, y: 0 }).is_none());
-
-    // Sim keeps running without the removed building.
-    tick_n(&mut w, 25, 0.05);
+    assert!(w.tile_grid.tile_occupant(TilePos { x: 11, y: 0 }).is_none());
 }

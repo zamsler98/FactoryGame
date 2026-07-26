@@ -2,7 +2,7 @@
 //! `game_app` decoupled from simulation internals: it draws whatever the
 //! snapshot says, nothing more.
 
-use game_core::{BuildingKind, BuildingState, ItemKind, TilePos, World};
+use game_core::{recipe, BuildingKind, BuildingState, ItemKind, TilePos, World};
 
 /// An item to draw. `x`/`y` are in fractional tile units (center of the item).
 pub struct ItemView {
@@ -11,14 +11,18 @@ pub struct ItemView {
     pub kind: ItemKind,
 }
 
-/// A machine with runtime status worth drawing (progress bar, buffer counts).
+/// A machine with runtime status worth drawing.
 pub struct MachineView {
     pub origin: TilePos,
     pub kind: BuildingKind,
-    /// 0.0..1.0 while the machine is working.
+    /// 0.0..1.0 while the machine is actively working.
     pub progress: Option<f32>,
-    pub input_count: u32,
-    pub output_count: u32,
+    /// True if this is a burner that currently has fuel to run on.
+    pub fueled: bool,
+    /// Whether this building is a burner at all (draws a fuel pip).
+    pub is_burner: bool,
+    /// Small overlay text (buffer counts / selected recipe).
+    pub label: Option<String>,
 }
 
 pub struct FactorySnapshot {
@@ -38,11 +42,10 @@ pub fn factory_snapshot(world: &World) -> FactorySnapshot {
         };
         let ox = inst.origin.x as f32;
         let oy = inst.origin.y as f32;
+        let (dx, dy) = inst.rotation.dir();
         match state {
-            BuildingState::Conveyor { item } => {
+            BuildingState::Belt { item } => {
                 if let Some(item) = item {
-                    let (dx, dy) = inst.rotation.dir();
-                    // progress 0 => entry edge, 1 => exit edge of the tile
                     let t = item.progress - 0.5;
                     items.push(ItemView {
                         x: ox + 0.5 + dx as f32 * t,
@@ -51,7 +54,12 @@ pub fn factory_snapshot(world: &World) -> FactorySnapshot {
                     });
                 }
             }
-            BuildingState::Miner { progress, output } => {
+            BuildingState::Miner {
+                fuel,
+                burn,
+                progress,
+                output,
+            } => {
                 if let Some(kind) = output {
                     items.push(ItemView {
                         x: ox + 0.5,
@@ -63,21 +71,71 @@ pub fn factory_snapshot(world: &World) -> FactorySnapshot {
                     origin: inst.origin,
                     kind: BuildingKind::Miner,
                     progress: output.is_none().then_some(*progress),
-                    input_count: 0,
-                    output_count: u32::from(output.is_some()),
+                    fueled: *burn > 0.0 || *fuel > 0,
+                    is_burner: true,
+                    label: None,
                 });
             }
-            BuildingState::Smelter {
+            BuildingState::Furnace {
+                fuel,
+                burn,
                 input,
                 craft,
                 output,
             } => {
+                let in_n = input.map_or(0, |(_, n)| n);
+                let out_n = output.map_or(0, |(_, n)| n);
                 machines.push(MachineView {
                     origin: inst.origin,
-                    kind: BuildingKind::Smelter,
+                    kind: BuildingKind::Furnace,
                     progress: craft.as_ref().map(|c| c.progress),
-                    input_count: input.map_or(0, |(_, n)| n),
-                    output_count: output.map_or(0, |(_, n)| n),
+                    fueled: *burn > 0.0 || *fuel > 0,
+                    is_burner: true,
+                    label: Some(format!("{in_n}/{out_n}")),
+                });
+            }
+            BuildingState::Inserter { holding, progress } => {
+                if let Some(kind) = holding {
+                    // Swing from the tile behind to the tile in front.
+                    let t = *progress; // 0 at pickup .. 1 at drop
+                    let sx = ox + 0.5 - dx as f32 * (1.0 - t);
+                    let sy = oy + 0.5 - dy as f32 * (1.0 - t);
+                    items.push(ItemView {
+                        x: sx,
+                        y: sy,
+                        kind: *kind,
+                    });
+                }
+            }
+            BuildingState::Assembler {
+                recipe: sel,
+                craft,
+                outputs,
+                ..
+            } => {
+                let out_n: u32 = outputs.values().sum();
+                let label = sel
+                    .and_then(recipe)
+                    .map(|r| short_name(r.name))
+                    .unwrap_or_else(|| "—".to_string());
+                machines.push(MachineView {
+                    origin: inst.origin,
+                    kind: BuildingKind::Assembler,
+                    progress: craft.as_ref().map(|c| c.progress),
+                    fueled: true,
+                    is_burner: false,
+                    label: Some(format!("{label} {out_n}")),
+                });
+            }
+            BuildingState::Chest { items: stored } => {
+                let total: u32 = stored.values().sum();
+                machines.push(MachineView {
+                    origin: inst.origin,
+                    kind: BuildingKind::Chest,
+                    progress: None,
+                    fueled: true,
+                    is_burner: false,
+                    label: (total > 0).then(|| total.to_string()),
                 });
             }
         }
@@ -96,4 +154,12 @@ pub fn factory_snapshot(world: &World) -> FactorySnapshot {
         machines,
         produced,
     }
+}
+
+/// A very short tag for a recipe name (first letters), for the tiny overlay.
+fn short_name(name: &str) -> String {
+    name.split_whitespace()
+        .filter_map(|w| w.chars().next())
+        .take(3)
+        .collect()
 }

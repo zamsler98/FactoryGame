@@ -29,13 +29,21 @@ This is a Cargo workspace with three crates enforcing strict dependency layering
 game_core  ←  game_logic  ←  game_app
 ```
 
-- **`game_core`** — Pure game state: `World` and `TileGrid`. No Macroquad, no platform APIs. Deterministic and headless-testable. Contains the 1000×1000 tile grid and building placement/removal.
-- **`game_logic`** — Game rules and building placement. Depends only on `game_core`. Exposes `InputFrame` (platform-agnostic input snapshot) and placement helpers (`try_place_building`, `grid_snapshot`) that `game_app` calls each frame. Must never call Macroquad directly.
-- **`game_app`** — Macroquad entry point. Captures platform input, fills `InputFrame`, drives building placement, and renders. Only crate that depends on Macroquad. Handles camera/panning, HUD, and WASM glue.
+- **`game_core`** — Pure game state: `World`, `TileGrid`, the `ResourceLayer` (finite ore patches), the `Factory` simulation, the player `Inventory`, and the hand-`CraftQueue`. No Macroquad, no platform APIs. Deterministic and headless-testable.
+- **`game_logic`** — Game rules and building placement/mining. Depends only on `game_core`. Exposes `InputFrame`, placement/mining helpers (`try_place_building`, `mine_at`), and the read-only `view`/`placement` snapshots (`grid_snapshot`, `resource_snapshot`, `factory_snapshot`) that `game_app` renders. Must never call Macroquad directly.
+- **`game_app`** — Macroquad entry point. Captures input, drives placement/mining/crafting, and renders the world plus the HUD (inventory, crafting, building palette, inspector). Only crate that depends on Macroquad. Handles camera/pan/zoom and WASM glue.
+
+### Factorio-style model
+
+- **Items** (`item.rs`) are the universal currency — raw ore, smelted plates, intermediates, *and* the building items you place. `BuildingKind::item()` maps a building to the item consumed to place it (returned when mined).
+- **Resources** (`resource.rs`) are finite ore patches under the grid; a `Miner` must sit on one and depletes it.
+- **Recipes** (`recipe.rs`) are shared: `Smelting` (furnaces, auto-selected from input ore) and `Crafting` (assemblers + the player's hands).
+- **Buildings** (`building.rs` / `factory.rs`): `Belt`, `Miner`, `Furnace`, `Inserter`, `Assembler`, `Chest`. Miners/furnaces are **burners** (consume coal fuel). Belts only hand off to other belts; loading/unloading machines requires **inserters** (grab from behind, drop in front) — like Factorio. Assemblers run a player-selected recipe (no electricity yet — a documented simplification).
 
 ### Key types
 
-- `TileGrid` (`game_core/src/grid.rs`) — sparse 1000×1000 grid backed by `Vec<Option<InstanceId>>` + `HashMap<InstanceId, BuildingInstance>`. Buildings have `spec_id` (1=conveyor, 2=miner, 3=smelter) and `Rotation`.
+- `TileGrid` (`game_core/src/grid.rs`) — sparse 1000×1000 grid backed by `Vec<Option<InstanceId>>` + `HashMap<InstanceId, BuildingInstance>`. Buildings have `spec_id` (1=belt, 2=miner, 3=furnace, 4=inserter, 5=assembler, 6=chest) and `Rotation`.
+- `BuildingState` (`game_core/src/factory.rs`) — per-instance runtime state; `Factory::tick` runs a progress phase then a transfer phase in id order.
 - `InputFrame` (`game_logic/src/lib.rs`) — platform-agnostic per-frame input: `action`, `pointer`.
 - `render_grid.rs` (`game_app`) — viewport-culled tile renderer; `TILE_PX = 32.0`.
 

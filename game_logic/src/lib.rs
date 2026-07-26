@@ -13,10 +13,11 @@ pub struct InputFrame {
     pub pointer: Option<(f32, f32)>,
 }
 
-/// Advance the game rules by `dt` seconds. Currently this steps the factory
-/// simulation; input-driven rules can hook in here as the game grows.
+/// Advance the game rules by `dt` seconds: steps the factory simulation and
+/// the player's hand-crafting queue. Input-driven placement is handled by the
+/// platform layer via `placement`.
 pub fn update_world(world: &mut World, _input: &InputFrame, dt: f32) {
-    world.update_factory(dt);
+    world.update(dt);
 }
 
 pub mod placement;
