@@ -63,9 +63,21 @@ async fn main() {
     let mut prev_mouse: Option<Vec2> = None;
     let mut mouse_press: Option<Vec2> = None;
 
+    // Touch gesture state (mobile). Once any touch is seen we treat this as a
+    // touch device and stop reading the emulated mouse, to avoid double input.
+    let mut touch_seen = false;
+    let mut touch_start: Option<Vec2> = None;
+    let mut prev_touch: Option<Vec2> = None;
+    let mut touch_moved = false;
+    let mut prev_pinch: Option<f32> = None;
+
     let mut selected_kind = BuildingKind::Belt;
     let mut selected_rotation = Rotation::R0;
     let mut selected_inst: Option<InstanceId> = None;
+    // Mine mode replaces right-click on touch: when on, a tap removes a building.
+    let mut mine_mode = false;
+    // The right-hand inventory/crafting panel can be hidden to free screen space.
+    let mut show_panel = true;
 
     // Recipe options an assembler can cycle through: None + each crafting recipe.
     let mut asm_options: Vec<Option<RecipeId>> = vec![None];
@@ -75,76 +87,160 @@ async fn main() {
         let dt = get_frame_time();
         let sw = screen_width();
         let sh = screen_height();
-        let panel_x = sw - PANEL_W;
-        let toolbar_y = sh - HUD_MARGIN - BTN_SIZE;
+        let panel_x = if show_panel { sw - PANEL_W } else { sw };
+        // Size the toolbar buttons to fit the available width (below the panel),
+        // so all buildings + Rotate + Mine stay on screen on narrow phones.
+        let n_tools = (BuildingKind::ALL.len() + 2) as f32;
+        let tb_gap = 6.0;
+        let tb_avail = panel_x - 2.0 * HUD_MARGIN;
+        let btn = ((tb_avail - tb_gap * (n_tools - 1.0)) / n_tools).clamp(34.0, BTN_SIZE);
+        let toolbar_y = sh - HUD_MARGIN - btn;
         let mut input = InputFrame::default();
 
-        // ---- Zoom (mouse wheel) ----
-        let (_, wheel_y) = mouse_wheel();
-        if wheel_y != 0.0 {
-            zoom = (zoom * if wheel_y > 0.0 { 1.1 } else { 1.0 / 1.1 }).clamp(0.3, 4.0);
-        }
-        camera.zoom = vec2(2.0 * zoom / sw, 2.0 * zoom / sh);
-
-        // ---- Keyboard: select building (1-6), rotate (R), pan (WASD/arrows) ----
-        let keys = [
-            (KeyCode::Key1, BuildingKind::Belt),
-            (KeyCode::Key2, BuildingKind::Miner),
-            (KeyCode::Key3, BuildingKind::Furnace),
-            (KeyCode::Key4, BuildingKind::Inserter),
-            (KeyCode::Key5, BuildingKind::Assembler),
-            (KeyCode::Key6, BuildingKind::Chest),
-        ];
-        for (k, kind) in keys {
-            if is_key_pressed(k) {
-                selected_kind = kind;
-            }
-        }
-        if is_key_pressed(KeyCode::R) {
-            selected_rotation = selected_rotation.rotated_cw();
-        }
-        let pan_speed = 400.0 * dt / zoom;
-        if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
-            camera.target.x -= pan_speed;
-        }
-        if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
-            camera.target.x += pan_speed;
-        }
-        if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
-            camera.target.y -= pan_speed;
-        }
-        if is_key_down(KeyCode::S) || is_key_down(KeyCode::Down) {
-            camera.target.y += pan_speed;
-        }
-
-        // ---- Mouse: left-drag pans, left-click (no drag) acts, right-click mines ----
-        let mouse_pos = vec2(mouse_position().0, mouse_position().1);
+        // `left_click` is a discrete "act here" tap in screen space, fed by both
+        // a mouse click-without-drag (desktop) and a finger tap (mobile). `pointer`
+        // tracks the current cursor/finger for the placement preview.
         let mut left_click: Option<Vec2> = None;
-        if is_mouse_button_pressed(MouseButton::Left) {
-            mouse_press = Some(mouse_pos);
+        let mut right_click = false;
+        let mut pointer = vec2(mouse_position().0, mouse_position().1);
+        let over_world = |p: Vec2| p.x < panel_x && p.y < toolbar_y;
+
+        // ---- Touch (mobile): 1 finger pans, 2 fingers pinch-zoom, tap acts ----
+        let active = touches();
+        if !active.is_empty() {
+            touch_seen = true;
         }
-        if is_mouse_button_down(MouseButton::Left) {
-            if let Some(prev) = prev_mouse {
-                let delta = camera.screen_to_world(prev) - camera.screen_to_world(mouse_pos);
-                camera.target += delta;
-            }
-            prev_mouse = Some(mouse_pos);
-        } else {
-            prev_mouse = None;
-        }
-        if is_mouse_button_released(MouseButton::Left) {
-            if let Some(press) = mouse_press.take() {
-                if press.distance(mouse_pos) < TAP_MAX_MOVEMENT {
-                    left_click = Some(mouse_pos);
+        if touch_seen {
+            match active.len() {
+                1 => {
+                    let t = &active[0];
+                    pointer = t.position;
+                    match t.phase {
+                        TouchPhase::Started => {
+                            touch_start = Some(t.position);
+                            prev_touch = Some(t.position);
+                            touch_moved = false;
+                        }
+                        TouchPhase::Moved | TouchPhase::Stationary => {
+                            // Only pan when the drag began over the world, so
+                            // dragging on a panel doesn't scroll the map.
+                            if let (Some(prev), Some(start)) = (prev_touch, touch_start) {
+                                if over_world(start) {
+                                    let delta = camera.screen_to_world(prev)
+                                        - camera.screen_to_world(t.position);
+                                    camera.target += delta;
+                                }
+                            }
+                            prev_touch = Some(t.position);
+                            if touch_start
+                                .is_some_and(|s| s.distance(t.position) > TAP_MAX_MOVEMENT)
+                            {
+                                touch_moved = true;
+                            }
+                        }
+                        TouchPhase::Ended => {
+                            if !touch_moved {
+                                if let Some(s) = touch_start {
+                                    if s.distance(t.position) < TAP_MAX_MOVEMENT {
+                                        left_click = Some(t.position);
+                                    }
+                                }
+                            }
+                            touch_start = None;
+                            prev_touch = None;
+                            prev_pinch = None;
+                        }
+                        TouchPhase::Cancelled => {
+                            touch_start = None;
+                            prev_touch = None;
+                            prev_pinch = None;
+                        }
+                    }
+                }
+                n if n >= 2 => {
+                    // Pinch: scale zoom by the change in finger separation.
+                    let dist = active[0].position.distance(active[1].position);
+                    if let Some(prev) = prev_pinch {
+                        if prev > 1.0 {
+                            zoom = (zoom * (dist / prev)).clamp(0.3, 4.0);
+                        }
+                    }
+                    prev_pinch = Some(dist);
+                    // Two fingers cancel any pending tap and suspend one-finger pan.
+                    touch_moved = true;
+                    prev_touch = None;
+                }
+                _ => {
+                    prev_touch = None;
+                    prev_pinch = None;
                 }
             }
-        }
-        let right_click = is_mouse_button_pressed(MouseButton::Right);
-        input.pointer = Some((mouse_pos.x, mouse_pos.y));
+        } else {
+            // ---- Desktop mouse + keyboard (only when not a touch device) ----
+            let (_, wheel_y) = mouse_wheel();
+            if wheel_y != 0.0 {
+                zoom = (zoom * if wheel_y > 0.0 { 1.1 } else { 1.0 / 1.1 }).clamp(0.3, 4.0);
+            }
 
-        // Hovered tile.
+            let keys = [
+                (KeyCode::Key1, BuildingKind::Belt),
+                (KeyCode::Key2, BuildingKind::Miner),
+                (KeyCode::Key3, BuildingKind::Furnace),
+                (KeyCode::Key4, BuildingKind::Inserter),
+                (KeyCode::Key5, BuildingKind::Assembler),
+                (KeyCode::Key6, BuildingKind::Chest),
+            ];
+            for (k, kind) in keys {
+                if is_key_pressed(k) {
+                    selected_kind = kind;
+                }
+            }
+            if is_key_pressed(KeyCode::R) {
+                selected_rotation = selected_rotation.rotated_cw();
+            }
+            let pan_speed = 400.0 * dt / zoom;
+            if is_key_down(KeyCode::A) || is_key_down(KeyCode::Left) {
+                camera.target.x -= pan_speed;
+            }
+            if is_key_down(KeyCode::D) || is_key_down(KeyCode::Right) {
+                camera.target.x += pan_speed;
+            }
+            if is_key_down(KeyCode::W) || is_key_down(KeyCode::Up) {
+                camera.target.y -= pan_speed;
+            }
+            if is_key_down(KeyCode::S) || is_key_down(KeyCode::Down) {
+                camera.target.y += pan_speed;
+            }
+
+            // Left-drag pans, left-click (no drag) acts, right-click mines.
+            if is_mouse_button_pressed(MouseButton::Left) {
+                mouse_press = Some(pointer);
+            }
+            if is_mouse_button_down(MouseButton::Left) {
+                if let Some(prev) = prev_mouse {
+                    let delta = camera.screen_to_world(prev) - camera.screen_to_world(pointer);
+                    camera.target += delta;
+                }
+                prev_mouse = Some(pointer);
+            } else {
+                prev_mouse = None;
+            }
+            if is_mouse_button_released(MouseButton::Left) {
+                if let Some(press) = mouse_press.take() {
+                    if press.distance(pointer) < TAP_MAX_MOVEMENT {
+                        left_click = Some(pointer);
+                    }
+                }
+            }
+            right_click = is_mouse_button_pressed(MouseButton::Right);
+        }
+
+        camera.zoom = vec2(2.0 * zoom / sw, 2.0 * zoom / sh);
+        input.pointer = Some((pointer.x, pointer.y));
+
+        // Tile under the cursor / last finger (drives the placement preview).
         let hover_tile = {
-            let w = camera.screen_to_world(mouse_pos);
+            let w = camera.screen_to_world(pointer);
             TilePos {
                 x: (w.x / TILE_PX).floor() as i32,
                 y: (w.y / TILE_PX).floor() as i32,
@@ -191,7 +287,7 @@ async fn main() {
         // place/select a building in the world.
         let mut ui_consumed = false;
 
-        // ---- Bottom toolbar: building palette ----
+        // ---- Bottom toolbar: building palette + Rotate + Mine ----
         {
             let mut x = HUD_MARGIN;
             for kind in BuildingKind::ALL {
@@ -199,16 +295,16 @@ async fn main() {
                 draw_rectangle(
                     x,
                     toolbar_y,
-                    BTN_SIZE,
-                    BTN_SIZE,
+                    btn,
+                    btn,
                     render_grid::building_color(Some(kind)),
                 );
-                if kind == selected_kind {
+                if kind == selected_kind && !mine_mode {
                     draw_rectangle_lines(
                         x,
                         toolbar_y,
-                        BTN_SIZE,
-                        BTN_SIZE,
+                        btn,
+                        btn,
                         3.0,
                         Color::new(1.0, 1.0, 0.0, 0.95),
                     );
@@ -216,23 +312,24 @@ async fn main() {
                 draw_text(
                     &format!("{count}"),
                     x + 4.0,
-                    toolbar_y + BTN_SIZE - 6.0,
+                    toolbar_y + btn - 6.0,
                     18.0,
                     BLACK,
                 );
                 if let Some(c) = left_click {
-                    if inside(c.x, c.y, x, toolbar_y, BTN_SIZE, BTN_SIZE) {
+                    if inside(c.x, c.y, x, toolbar_y, btn, btn) {
                         selected_kind = kind;
+                        mine_mode = false;
                         ui_consumed = true;
                     }
                 }
-                x += BTN_SIZE + 6.0;
+                x += btn + tb_gap;
             }
             if button(
                 x,
                 toolbar_y,
-                BTN_SIZE,
-                BTN_SIZE,
+                btn,
+                btn,
                 rot_label(selected_rotation),
                 true,
                 left_click,
@@ -240,13 +337,33 @@ async fn main() {
                 selected_rotation = selected_rotation.rotated_cw();
                 ui_consumed = true;
             }
-            draw_text(
-                &format!("Selected: {} (R rotates)", selected_kind.name()),
-                HUD_MARGIN,
-                toolbar_y - 8.0,
-                18.0,
-                WHITE,
-            );
+            x += btn + tb_gap;
+            // Mine toggle (replaces right-click on touch devices).
+            if button(x, toolbar_y, btn, btn, "Mine", true, left_click) {
+                mine_mode = !mine_mode;
+                ui_consumed = true;
+            }
+            if mine_mode {
+                draw_rectangle_lines(x, toolbar_y, btn, btn, 3.0, Color::new(1.0, 0.3, 0.3, 0.95));
+            }
+            let status = if mine_mode {
+                "Mode: MINE (tap a building to remove)".to_string()
+            } else {
+                format!("Place: {}", selected_kind.name())
+            };
+            draw_text(&status, HUD_MARGIN, toolbar_y - 8.0, 18.0, WHITE);
+        }
+
+        // ---- Panel toggle (top-right corner, always visible) ----
+        {
+            let bw = 40.0;
+            let bx = sw - bw - HUD_MARGIN;
+            let by = HUD_MARGIN;
+            let label = if show_panel { ">>" } else { "<<" };
+            if button(bx, by, bw, 28.0, label, true, left_click) {
+                show_panel = !show_panel;
+                ui_consumed = true;
+            }
         }
 
         // ---- Right panel: inventory / crafting / inspector ----
@@ -403,6 +520,8 @@ async fn main() {
         }
 
         // ================= World interaction =================
+        // A world tap mines (in Mine mode), else selects an existing building or
+        // places the selected one. Desktop right-click always mines.
         if let Some(c) = left_click {
             if !ui_consumed {
                 let w = camera.screen_to_world(c);
@@ -410,7 +529,12 @@ async fn main() {
                     x: (w.x / TILE_PX).floor() as i32,
                     y: (w.y / TILE_PX).floor() as i32,
                 };
-                if let Some(id) = world.tile_grid.tile_occupant(tile) {
+                if mine_mode {
+                    if world.tile_grid.tile_occupant(tile) == selected_inst {
+                        selected_inst = None;
+                    }
+                    game_logic::placement::mine_at(&mut world, tile);
+                } else if let Some(id) = world.tile_grid.tile_occupant(tile) {
                     selected_inst = Some(id);
                 } else {
                     let _ = game_logic::placement::try_place_building(
@@ -422,7 +546,7 @@ async fn main() {
                 }
             }
         }
-        if right_click && mouse_pos.x < panel_x && mouse_pos.y < toolbar_y {
+        if right_click && pointer.x < panel_x && pointer.y < toolbar_y {
             if world.tile_grid.tile_occupant(hover_tile) == selected_inst {
                 selected_inst = None;
             }
@@ -463,7 +587,7 @@ fn can_place_here(world: &World, kind: BuildingKind, tile: TilePos, rot: Rotatio
 /// Minimal always-on-top overlay (controls hint + production tallies).
 fn draw_hud_overlay(factory: &game_logic::view::FactorySnapshot, hover: TilePos) {
     draw_text(
-        "L-click: place / select   R-click: mine   drag: pan   wheel: zoom",
+        "Tap: place / select   drag: pan   pinch: zoom   Mine btn: remove",
         12.0,
         20.0,
         18.0,
