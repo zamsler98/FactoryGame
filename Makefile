@@ -41,7 +41,15 @@ test:
 	cargo test
 
 add-wasm-target:
-	rustup target add wasm32-unknown-unknown
+	@if command -v rustup >/dev/null 2>&1; then \
+		rustup target add wasm32-unknown-unknown; \
+	elif [ -d "$$(rustc --print sysroot)/lib/rustlib/wasm32-unknown-unknown/lib" ]; then \
+		echo "rustup not found; wasm32-unknown-unknown already available via system rustc, skipping"; \
+	else \
+		echo "error: rustup not found and wasm32-unknown-unknown target is unavailable." >&2; \
+		echo "Install rustup, or install your distro's wasm target package (e.g. 'pacman -S rust-wasm')." >&2; \
+		exit 1; \
+	fi
 
 wasm: add-wasm-target
 	cargo build -p game_app --target wasm32-unknown-unknown --release

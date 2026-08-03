@@ -21,6 +21,30 @@ pub enum Rotation {
     R270,
 }
 
+impl Rotation {
+    /// Unit tile offset a building faces: R0 = +x (right); +y is down-screen.
+    /// The renderer's direction arrows and the item-transfer logic both use
+    /// this, so they can never disagree.
+    pub fn dir(self) -> (i32, i32) {
+        match self {
+            Rotation::R0 => (1, 0),
+            Rotation::R90 => (0, 1),
+            Rotation::R180 => (-1, 0),
+            Rotation::R270 => (0, -1),
+        }
+    }
+
+    /// Next rotation clockwise (R0 -> R90 -> R180 -> R270 -> R0).
+    pub fn rotated_cw(self) -> Rotation {
+        match self {
+            Rotation::R0 => Rotation::R90,
+            Rotation::R90 => Rotation::R180,
+            Rotation::R180 => Rotation::R270,
+            Rotation::R270 => Rotation::R0,
+        }
+    }
+}
+
 pub type InstanceId = u64;
 
 #[derive(Clone, Debug)]
