@@ -5,7 +5,7 @@ SHELL := /bin/bash
 WASM_NAME ?= factorygame.wasm
 PORT      ?= 8080
 
-.PHONY: help fmt fmt-check clippy build run test add-wasm-target wasm serve dev clean dist
+.PHONY: help fmt fmt-check clippy build run test add-wasm-target wasm serve dev watch dev-watch clean dist
 
 help:
 	@echo "Available targets:"
@@ -20,6 +20,8 @@ help:
 	@echo "  wasm            Build game_app for wasm and copy to dist/$(WASM_NAME)"
 	@echo "  serve           Serve dist/ on http://localhost:$(PORT)"
 	@echo "  dev             wasm + serve (build and open in browser)"
+	@echo "  watch           rebuild dist/ automatically whenever source files change (requires entr)"
+	@echo "  dev-watch       serve dist/ and rebuild automatically on change (requires entr)"
 	@echo "  clean           cargo clean and remove dist/"
 
 fmt:
@@ -63,6 +65,22 @@ serve:
 	python3 -m http.server $(PORT) --directory dist
 
 dev: wasm serve
+
+WATCH_PATHS := game_core/src game_logic/src game_app/src index.html Cargo.toml game_core/Cargo.toml game_logic/Cargo.toml game_app/Cargo.toml
+
+watch:
+	@command -v entr >/dev/null 2>&1 || { echo "error: entr not found. Install it with 'sudo apt-get install entr'." >&2; exit 1; }
+	@echo "Watching for changes... (Ctrl+C to stop)"
+	@find $(WATCH_PATHS) -type f | entr -r $(MAKE) wasm
+
+dev-watch:
+	@command -v entr >/dev/null 2>&1 || { echo "error: entr not found. Install it with 'sudo apt-get install entr'." >&2; exit 1; }
+	@$(MAKE) wasm
+	@python3 -m http.server $(PORT) --directory dist & \
+	SERVER_PID=$$!; \
+	trap "kill $$SERVER_PID" EXIT; \
+	echo "Serving http://localhost:$(PORT) — watching for changes... (Ctrl+C to stop)"; \
+	find $(WATCH_PATHS) -type f | entr -r $(MAKE) wasm
 
 clean:
 	cargo clean
