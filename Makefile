@@ -57,7 +57,9 @@ wasm: add-wasm-target
 	cargo build -p game_app --target wasm32-unknown-unknown --release
 	mkdir -p dist
 	cp target/wasm32-unknown-unknown/release/game_app.wasm dist/$(WASM_NAME)
-	cp index.html dist/
+	sed "s/$(WASM_NAME)/$(WASM_NAME)?v=$$(date +%s)/" index.html > dist/index.html
+	rm -rf dist/assets
+	cp -r assets dist/assets
 	@echo "WASM built and copied to dist/$(WASM_NAME)"
 
 serve:
