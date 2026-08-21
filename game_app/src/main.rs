@@ -10,7 +10,10 @@ use game_logic::InputFrame;
 use macroquad::prelude::*;
 use std::collections::HashMap;
 
+mod entity_renderers;
 mod render_grid;
+
+use entity_renderers::miner_renderer::MinerRenderer;
 
 #[macroquad::main("FactoryGame - Macroquad")]
 async fn main() {
@@ -25,10 +28,7 @@ async fn main() {
     };
     let zoom: f32 = 1.0;
 
-    let miner_texture: Texture2D = load_texture("assets/miner_sprite.png")
-        .await
-        .expect("failed to load assets/miner_sprite.png");
-    miner_texture.set_filter(FilterMode::Nearest);
+    let miner_renderer = MinerRenderer::load().await;
 
     // Touch tap detection state (for mobile taps -> action)
     // let mut prev_touches: HashMap<u64, Vec2> = HashMap::new();
@@ -51,7 +51,7 @@ async fn main() {
         let rect_w = 100.0;
         let rect_h = 100.0;
         draw_texture_ex(
-            &miner_texture,
+            &miner_renderer.texture,
             10.0,
             10.0,
             // screen_width() / 2.0 - rect_w / 2.0,
