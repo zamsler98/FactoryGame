@@ -15,6 +15,8 @@ mod render_grid;
 
 use entity_renderers::miner_renderer::MinerRenderer;
 
+use crate::entity_renderers::RenderEntity;
+
 #[macroquad::main("FactoryGame - Macroquad")]
 async fn main() {
     // Create the game world (game_core)
@@ -30,6 +32,14 @@ async fn main() {
 
     let miner_renderer = MinerRenderer::load().await;
 
+    let miner1 = game_core::Entity {
+        id: 1,
+        position: game_core::Position { x: 10, y: 10 },
+    };
+    let miner2 = game_core::Entity {
+        id: 1,
+        position: game_core::Position { x: 50, y: 50 },
+    };
     // Touch tap detection state (for mobile taps -> action)
     // let mut prev_touches: HashMap<u64, Vec2> = HashMap::new();
     // let mut touch_start: HashMap<u64, Vec2> = HashMap::new();
@@ -48,21 +58,8 @@ async fn main() {
         let mut input = InputFrame::default();
 
         clear_background(BLACK);
-        let rect_w = 100.0;
-        let rect_h = 100.0;
-        draw_texture_ex(
-            &miner_renderer.texture,
-            10.0,
-            10.0,
-            // screen_width() / 2.0 - rect_w / 2.0,
-            // screen_height() / 2.0 - rect_h / 2.0,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2(rect_w, rect_h)),
-                ..Default::default()
-            },
-        );
-
+        miner_renderer.render(&miner1);
+        miner_renderer.render(&miner2);
         next_frame().await;
         // Mobile touch: collect touches for pointer and tap detection (no joystick)
         // let mut touch_pointer: Option<Vec2> = None;

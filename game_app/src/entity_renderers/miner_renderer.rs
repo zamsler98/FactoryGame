@@ -1,4 +1,10 @@
-use macroquad::texture::{load_texture, FilterMode, Texture2D};
+use super::RenderEntity;
+use game_core::Entity;
+use macroquad::{
+    color::WHITE,
+    math::vec2,
+    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D},
+};
 
 pub struct MinerRenderer {
     pub texture: Texture2D,
@@ -14,8 +20,19 @@ impl MinerRenderer {
     }
 }
 
-// impl RenderEntity for MinerRenderer {
-//     fn render(&self, entity: &Entity) {
-//        draw_texture_ex(self.texture, entity.
-//     }
-// }
+impl RenderEntity for MinerRenderer {
+    fn render(&self, entity: &Entity) {
+        let rect_w = 100.0;
+        let rect_h = 100.0;
+        draw_texture_ex(
+            &self.texture,
+            entity.position.x as f32,
+            entity.position.y as f32,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(rect_w, rect_h)),
+                ..Default::default()
+            },
+        );
+    }
+}

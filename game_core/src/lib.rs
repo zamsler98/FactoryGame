@@ -2,7 +2,9 @@
 //! This crate must not depend on Macroquad or any platform APIs.
 //! It contains the world and deterministic update functions.
 
+mod entity;
 mod grid;
+pub use entity::{Entity, Position};
 pub use grid::*;
 
 /// World container holding the tile grid.
