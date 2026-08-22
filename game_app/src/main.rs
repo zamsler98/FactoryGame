@@ -32,14 +32,15 @@ async fn main() {
 
     let miner_renderer = MinerRenderer::load().await;
 
-    let miner1 = game_core::Entity {
+    let mut chunk = game_core::Chunk::new();
+    chunk.add_entity(game_core::Entity {
         id: 1,
         position: game_core::Position { x: 10, y: 10 },
-    };
-    let miner2 = game_core::Entity {
-        id: 1,
+    });
+    chunk.add_entity(game_core::Entity {
+        id: 2,
         position: game_core::Position { x: 50, y: 50 },
-    };
+    });
     // Touch tap detection state (for mobile taps -> action)
     // let mut prev_touches: HashMap<u64, Vec2> = HashMap::new();
     // let mut touch_start: HashMap<u64, Vec2> = HashMap::new();
@@ -58,8 +59,9 @@ async fn main() {
         let mut input = InputFrame::default();
 
         clear_background(BLACK);
-        miner_renderer.render(&miner1);
-        miner_renderer.render(&miner2);
+        for entity in &chunk.entities {
+            miner_renderer.render(entity);
+        }
         next_frame().await;
         // Mobile touch: collect touches for pointer and tap detection (no joystick)
         // let mut touch_pointer: Option<Vec2> = None;

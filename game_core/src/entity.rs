@@ -4,6 +4,7 @@ pub struct Position {
     pub y: i32,
 }
 
+#[derive(Debug)]
 pub struct Entity {
     pub position: Position,
     pub id: i32,
