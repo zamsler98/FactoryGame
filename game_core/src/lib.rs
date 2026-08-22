@@ -5,7 +5,7 @@
 mod entity;
 mod grid;
 mod world;
-pub use entity::{Entity, Position};
+pub use entity::{Entity, EntityType, Position};
 pub use grid::*;
 pub use world::Chunk;
 

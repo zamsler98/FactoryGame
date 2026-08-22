@@ -10,12 +10,11 @@ use game_logic::InputFrame;
 use macroquad::prelude::*;
 use std::collections::HashMap;
 
+mod chunk_renderer;
 mod entity_renderers;
 mod render_grid;
 
-use entity_renderers::miner_renderer::MinerRenderer;
-
-use crate::entity_renderers::RenderEntity;
+use chunk_renderer::ChunkRenderer;
 
 #[macroquad::main("FactoryGame - Macroquad")]
 async fn main() {
@@ -30,15 +29,15 @@ async fn main() {
     };
     let zoom: f32 = 1.0;
 
-    let miner_renderer = MinerRenderer::load().await;
+    let chunk_renderer = ChunkRenderer::load().await;
 
     let mut chunk = game_core::Chunk::new();
     chunk.add_entity(game_core::Entity {
-        id: 1,
+        entity_type: game_core::EntityType::Miner,
         position: game_core::Position { x: 10, y: 10 },
     });
     chunk.add_entity(game_core::Entity {
-        id: 2,
+        entity_type: game_core::EntityType::Miner,
         position: game_core::Position { x: 50, y: 50 },
     });
     // Touch tap detection state (for mobile taps -> action)
@@ -59,9 +58,7 @@ async fn main() {
         let mut input = InputFrame::default();
 
         clear_background(BLACK);
-        for entity in &chunk.entities {
-            miner_renderer.render(entity);
-        }
+        chunk_renderer.render(&chunk);
         next_frame().await;
         // Mobile touch: collect touches for pointer and tap detection (no joystick)
         // let mut touch_pointer: Option<Vec2> = None;

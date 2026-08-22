@@ -4,8 +4,13 @@ pub struct Position {
     pub y: i32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum EntityType {
+    Miner,
+}
+
 #[derive(Debug)]
 pub struct Entity {
     pub position: Position,
-    pub id: i32,
+    pub entity_type: EntityType,
 }
