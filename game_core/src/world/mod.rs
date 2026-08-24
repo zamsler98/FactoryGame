@@ -1,2 +1,3 @@
 mod chunk;
+mod world;
 pub use chunk::Chunk;

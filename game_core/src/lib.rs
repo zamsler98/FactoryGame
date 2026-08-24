@@ -8,6 +8,7 @@ mod world;
 pub use entity::{Entity, EntityType, Position};
 pub use grid::*;
 pub use world::Chunk;
+pub mod utilities;
 
 /// World container holding the tile grid.
 pub struct World {
