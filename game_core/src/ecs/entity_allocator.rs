@@ -18,16 +18,16 @@ impl EntityAllocator {
     }
 
     pub fn despawn(&mut self, entity: Entity) {
-        if let Some(generation) = self.generations.get_mut(entity.index as usize) {
-            if *generation == entity.generation {
+        if let Some(generation) = self.generations.get_mut(entity.index() as usize) {
+            if *generation == entity.generation() {
                 *generation += 1;
-                self.free_indices.push(entity.index);
+                self.free_indices.push(entity.index());
             }
         }
     }
 
     pub fn is_alive(&self, entity: Entity) -> bool {
-        self.generations.get(entity.index as usize) == Some(&entity.generation)
+        self.generations.get(entity.index() as usize).copied() == Some(entity.generation())
     }
 }
 
@@ -39,8 +39,8 @@ mod tests {
     fn spawn_returns_first_entity() {
         let mut allocator = EntityAllocator::default();
         let entity = allocator.spawn();
-        assert_eq!(entity.index, 0);
-        assert_eq!(entity.generation, 0);
+        assert_eq!(entity.index(), 0);
+        assert_eq!(entity.generation(), 0);
     }
 
     #[test]
@@ -62,7 +62,7 @@ mod tests {
     fn entity_with_different_generation_is_not_alive() {
         let mut allocator = EntityAllocator::default();
         let entity = allocator.spawn();
-        let entity = Entity::new(entity.index, entity.generation + 1);
+        let entity = Entity::new(entity.index(), entity.generation() + 1);
         assert!(!allocator.is_alive(entity));
     }
 
@@ -92,8 +92,8 @@ mod tests {
         let reused = allocator.spawn();
         assert!(allocator.is_alive(reused));
         assert!(allocator.is_alive(other));
-        assert_eq!(reused.generation, 1);
-        assert_eq!(reused.index, 0);
+        assert_eq!(reused.generation(), 1);
+        assert_eq!(reused.index(), 0);
     }
 
     #[test]

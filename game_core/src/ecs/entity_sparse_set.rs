@@ -20,7 +20,7 @@ impl<T> Default for EntitySparseSet<T> {
 
 impl<T> EntitySparseSet<T> {
     pub fn insert(&mut self, id: Entity, value: T) {
-        let index = id.index as usize;
+        let index = id.index() as usize;
         if index >= self.sparse.len() {
             self.sparse.resize(index + 1, EMPTY)
         }
@@ -37,12 +37,12 @@ impl<T> EntitySparseSet<T> {
 
     pub fn remove(&mut self, id: Entity) -> Option<T> {
         let dense_index = self.get_dense_index(id)?;
-        self.sparse[id.index as usize] = EMPTY;
+        self.sparse[id.index() as usize] = EMPTY;
         let value = self.dense.swap_remove(dense_index);
         self.owners.swap_remove(dense_index);
         if dense_index < self.owners.len() {
             let moved = self.owners[dense_index];
-            self.sparse[moved.index as usize] = dense_index as u32;
+            self.sparse[moved.index() as usize] = dense_index as u32;
         }
         Some(value)
     }
@@ -53,7 +53,7 @@ impl<T> EntitySparseSet<T> {
     }
 
     fn get_dense_index(&self, id: Entity) -> Option<usize> {
-        let dense_index = *self.sparse.get(id.index as usize)?;
+        let dense_index = *self.sparse.get(id.index() as usize)?;
         if dense_index == EMPTY {
             return None;
         }

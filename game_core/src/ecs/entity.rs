@@ -1,11 +1,19 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Entity {
-    pub index: u32,
-    pub generation: u32,
+    index: u32,
+    generation: u32,
 }
 
 impl Entity {
-    pub fn new(index: u32, generation: u32) -> Self {
+    pub(super) const fn new(index: u32, generation: u32) -> Self {
         Self { index, generation }
+    }
+
+    pub const fn index(self) -> u32 {
+        self.index
+    }
+
+    pub const fn generation(self) -> u32 {
+        self.generation
     }
 }
