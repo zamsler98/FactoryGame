@@ -2,6 +2,28 @@ use super::entity::Entity;
 
 const EMPTY: u32 = u32::MAX;
 
+/// Dense component storage keyed by generational [`Entity`] handles.
+///
+/// Values are stored contiguously for efficient iteration, while a sparse
+/// index provides constant-time insertion, removal, and lookup. Entity
+/// generations are checked so stale handles cannot access replacement values.
+///
+/// Removing a value uses swap removal, so storage order is not stable.
+///
+/// # Examples
+///
+/// ```
+/// use game_core::{EntityAllocator, EntitySparseSet};
+///
+/// let mut allocator = EntityAllocator::default();
+/// let entity = allocator.spawn();
+/// let mut health = EntitySparseSet::default();
+///
+/// health.insert(entity, 100);
+/// assert_eq!(health.get(entity), Some(&100));
+/// assert_eq!(health.remove(entity), Some(100));
+/// assert_eq!(health.get(entity), None);
+/// ```
 pub struct EntitySparseSet<T> {
     sparse: Vec<u32>,
     dense: Vec<T>,
@@ -19,6 +41,10 @@ impl<T> Default for EntitySparseSet<T> {
 }
 
 impl<T> EntitySparseSet<T> {
+    /// Inserts `value` for `id`.
+    ///
+    /// If the entity index is already occupied, its value and owning
+    /// generation are replaced.
     pub fn insert(&mut self, id: Entity, value: T) {
         let index = id.index() as usize;
         if index >= self.sparse.len() {
@@ -35,6 +61,10 @@ impl<T> EntitySparseSet<T> {
         }
     }
 
+    /// Removes and returns the value owned by `id`.
+    ///
+    /// Returns [`None`] if the index is empty or belongs to a different entity
+    /// generation.
     pub fn remove(&mut self, id: Entity) -> Option<T> {
         let dense_index = self.get_dense_index(id)?;
         self.sparse[id.index() as usize] = EMPTY;
@@ -47,6 +77,10 @@ impl<T> EntitySparseSet<T> {
         Some(value)
     }
 
+    /// Returns a shared reference to the value owned by `id`.
+    ///
+    /// Returns [`None`] if the index is empty or belongs to a different entity
+    /// generation.
     pub fn get(&self, id: Entity) -> Option<&T> {
         let dense_index = self.get_dense_index(id)?;
         self.dense.get(dense_index)

@@ -1,5 +1,22 @@
 use super::entity::Entity;
 
+/// Allocates and recycles generational [`Entity`] handles.
+///
+/// Each entity combines a reusable index with a generation. Reusing an index
+/// increments its generation, so handles from before a despawn remain stale.
+///
+/// # Examples
+///
+/// ```
+/// use game_core::EntityAllocator;
+///
+/// let mut allocator = EntityAllocator::default();
+/// let entity = allocator.spawn();
+///
+/// assert!(allocator.is_alive(entity));
+/// allocator.despawn(entity);
+/// assert!(!allocator.is_alive(entity));
+/// ```
 #[derive(Default)]
 pub struct EntityAllocator {
     generations: Vec<u32>,
@@ -7,6 +24,23 @@ pub struct EntityAllocator {
 }
 
 impl EntityAllocator {
+    /// Allocates a live entity handle.
+    ///
+    /// Freed indices are reused before the allocator grows.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use game_core::EntityAllocator;
+    ///
+    /// let mut allocator = EntityAllocator::default();
+    /// let first = allocator.spawn();
+    /// allocator.despawn(first);
+    /// let replacement = allocator.spawn();
+    ///
+    /// assert_eq!(replacement.index(), first.index());
+    /// assert_ne!(replacement.generation(), first.generation());
+    /// ```
     pub fn spawn(&mut self) -> Entity {
         if let Some(index) = self.free_indices.pop() {
             Entity::new(index, self.generations[index as usize])
@@ -17,6 +51,10 @@ impl EntityAllocator {
         }
     }
 
+    /// Releases `entity` if it is currently alive.
+    ///
+    /// Unknown entities, stale generations, and entities that were already
+    /// despawned are ignored.
     pub fn despawn(&mut self, entity: Entity) {
         if let Some(generation) = self.generations.get_mut(entity.index() as usize) {
             if *generation == entity.generation() {
@@ -26,6 +64,8 @@ impl EntityAllocator {
         }
     }
 
+    /// Returns `true` when `entity` matches the allocator's current generation
+    /// for its index.
     pub fn is_alive(&self, entity: Entity) -> bool {
         self.generations.get(entity.index() as usize).copied() == Some(entity.generation())
     }
