@@ -1,4 +1,4 @@
-use crate::entity::Entity;
+use super::entity::Entity;
 
 const EMPTY: u32 = u32::MAX;
 

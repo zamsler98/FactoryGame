@@ -1,8 +1,7 @@
 //! game_core: pure game state.
 //! This crate must not depend on Macroquad or any platform APIs.
-//! It contains the world and deterministic update functions.
+//! It contains the entity-component system and deterministic update functions.
 
-mod entity;
-pub mod utilities;
+pub mod ecs;
 
-pub use entity::Entity;
+pub use ecs::{Entity, EntitySparseSet};
