@@ -1,11 +1,11 @@
-use crate::entity::EntityId;
+use crate::entity::Entity;
 
 const EMPTY: u32 = u32::MAX;
 
 pub struct EntitySparseSet<T> {
     sparse: Vec<u32>,
     dense: Vec<T>,
-    owners: Vec<EntityId>,
+    owners: Vec<Entity>,
 }
 
 impl<T> Default for EntitySparseSet<T> {
@@ -19,7 +19,7 @@ impl<T> Default for EntitySparseSet<T> {
 }
 
 impl<T> EntitySparseSet<T> {
-    pub fn insert(&mut self, id: EntityId, value: T) {
+    pub fn insert(&mut self, id: Entity, value: T) {
         let index = id.index as usize;
         if index >= self.sparse.len() {
             self.sparse.resize(index + 1, EMPTY)
@@ -35,7 +35,7 @@ impl<T> EntitySparseSet<T> {
         }
     }
 
-    pub fn remove(&mut self, id: EntityId) -> Option<T> {
+    pub fn remove(&mut self, id: Entity) -> Option<T> {
         let dense_index = self.get_dense_index(id)?;
         self.sparse[id.index as usize] = EMPTY;
         let value = self.dense.swap_remove(dense_index);
@@ -47,12 +47,12 @@ impl<T> EntitySparseSet<T> {
         Some(value)
     }
 
-    pub fn get(&self, id: EntityId) -> Option<&T> {
+    pub fn get(&self, id: Entity) -> Option<&T> {
         let dense_index = self.get_dense_index(id)?;
         self.dense.get(dense_index)
     }
 
-    fn get_dense_index(&self, id: EntityId) -> Option<usize> {
+    fn get_dense_index(&self, id: Entity) -> Option<usize> {
         let dense_index = *self.sparse.get(id.index as usize)?;
         if dense_index == EMPTY {
             return None;
@@ -77,7 +77,7 @@ mod tests {
     fn insert_entity() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
-        let id = EntityId::new(0, 0);
+        let id = Entity::new(0, 0);
         set.insert(id, to_store);
         let stored = set.get(id).expect("entity should be stored");
         assert_eq!(*stored, to_store);
@@ -87,7 +87,7 @@ mod tests {
     fn insert_entity_not_next() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
-        let id = EntityId::new(10, 0);
+        let id = Entity::new(10, 0);
         set.insert(id, to_store);
         let stored = set.get(id).expect("entity should be stored");
         assert_eq!(*stored, to_store);
@@ -97,7 +97,7 @@ mod tests {
     fn insert_overwrite_old_slot() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
-        let id = EntityId::new(10, 0);
+        let id = Entity::new(10, 0);
         set.insert(id, 37);
         set.insert(id, to_store);
         let stored = set.get(id).expect("entity should be stored");
@@ -108,7 +108,7 @@ mod tests {
     fn remove_entity() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
-        let id = EntityId::new(10, 0);
+        let id = Entity::new(10, 0);
         set.insert(id, to_store);
         let removed = set.remove(id).expect("removed value should be returned");
         assert_eq!(removed, to_store);
@@ -119,7 +119,7 @@ mod tests {
     #[test]
     fn remove_entity_does_not_exist() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
-        let id = EntityId::new(10, 0);
+        let id = Entity::new(10, 0);
         let removed = set.remove(id);
         assert_eq!(removed, None);
         let stored = set.get(id);
@@ -129,7 +129,7 @@ mod tests {
     #[test]
     fn reuse_old_index() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
-        let id = EntityId::new(10, 0);
+        let id = Entity::new(10, 0);
         let to_store: u32 = 42;
         set.insert(id, 32);
         set.remove(id);
@@ -142,9 +142,9 @@ mod tests {
     fn get_new_generation() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
-        let id = EntityId::new(10, 0);
+        let id = Entity::new(10, 0);
         set.insert(id, to_store);
-        let id2 = EntityId::new(10, 1);
+        let id2 = Entity::new(10, 1);
         let stored = set.get(id2);
         assert_eq!(stored, None);
     }
@@ -153,9 +153,9 @@ mod tests {
     fn insert_new_generation() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
-        let id = EntityId::new(10, 0);
+        let id = Entity::new(10, 0);
         set.insert(id, 37);
-        let id2 = EntityId::new(10, 1);
+        let id2 = Entity::new(10, 1);
         set.insert(id2, to_store);
         let get_from_id_1 = set.get(id);
         assert_eq!(get_from_id_1, None);
@@ -167,8 +167,8 @@ mod tests {
     fn remove_non_last_element() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
-        let id = EntityId::new(0, 0);
-        let id2 = EntityId::new(1, 0);
+        let id = Entity::new(0, 0);
+        let id2 = Entity::new(1, 0);
         set.insert(id, 37);
         set.insert(id2, to_store);
 
@@ -185,7 +185,7 @@ mod tests {
     fn remove_id_twice() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
-        let id = EntityId::new(0, 0);
+        let id = Entity::new(0, 0);
         set.insert(id, to_store);
         set.remove(id);
         let value = set.remove(id);
@@ -196,8 +196,8 @@ mod tests {
     fn remove_stale_generation() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
-        let id = EntityId::new(0, 0);
-        let id2 = EntityId::new(0, 1);
+        let id = Entity::new(0, 0);
+        let id2 = Entity::new(0, 1);
         set.insert(id, to_store);
         let value = set.remove(id2);
         assert_eq!(value, None);

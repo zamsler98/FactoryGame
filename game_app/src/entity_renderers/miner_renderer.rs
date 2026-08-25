@@ -1,5 +1,5 @@
 use super::RenderEntity;
-use game_core::Entity;
+use game_logic::EntityInfo;
 use macroquad::{
     color::WHITE,
     math::vec2,
@@ -21,7 +21,7 @@ impl MinerRenderer {
 }
 
 impl RenderEntity for MinerRenderer {
-    fn render(&self, entity: &Entity) {
+    fn render(&self, entity: &EntityInfo) {
         let rect_w = 100.0;
         let rect_h = 100.0;
         draw_texture_ex(

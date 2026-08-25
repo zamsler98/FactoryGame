@@ -1,8 +1,8 @@
-use crate::entity::Entity;
+use crate::world::entity_info::EntityInfo;
 
 #[derive(Debug, Default)]
 pub struct Chunk {
-    pub entities: Vec<Entity>,
+    pub entities: Vec<EntityInfo>,
     pub coords: ChunkCoords,
 }
 
@@ -19,7 +19,7 @@ impl Chunk {
             coords: ChunkCoords::default(),
         }
     }
-    pub fn add_entity(&mut self, entity: Entity) {
+    pub fn add_entity(&mut self, entity: EntityInfo) {
         self.entities.push(entity);
     }
 }

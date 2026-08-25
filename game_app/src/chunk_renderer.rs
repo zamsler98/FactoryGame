@@ -1,5 +1,5 @@
 use crate::entity_renderers::EntityRenderer;
-use game_core::Chunk;
+use game_logic::Chunk;
 
 /// Renders every entity in a chunk.
 pub struct ChunkRenderer {

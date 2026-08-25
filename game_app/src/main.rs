@@ -16,14 +16,14 @@ use chunk_renderer::ChunkRenderer;
 async fn main() {
     let chunk_renderer = ChunkRenderer::load().await;
 
-    let mut chunk = game_core::Chunk::new();
-    chunk.add_entity(game_core::Entity {
-        entity_type: game_core::EntityType::Miner,
-        position: game_core::Position { x: 10, y: 10 },
+    let mut chunk = game_logic::Chunk::new();
+    chunk.add_entity(game_logic::EntityInfo {
+        entity_type: game_logic::EntityType::Miner,
+        position: game_logic::Position { x: 10, y: 10 },
     });
-    chunk.add_entity(game_core::Entity {
-        entity_type: game_core::EntityType::Miner,
-        position: game_core::Position { x: 50, y: 50 },
+    chunk.add_entity(game_logic::EntityInfo {
+        entity_type: game_logic::EntityType::Miner,
+        position: game_logic::Position { x: 50, y: 50 },
     });
 
     loop {
