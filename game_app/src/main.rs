@@ -32,10 +32,30 @@ async fn main() {
         clear_background(BLACK);
         chunk_renderer.render(&chunk);
 
+        let w = 15.0;
+        for i in 0..8 {
+            for j in 0..8 {
+                draw_rectangle_lines(i as f32 * w, j as f32 * w, w, w, 1.0, WHITE);
+            }
+        }
+
         if is_mouse_button_pressed(MouseButton::Left) {
             let (x, y) = mouse_position();
+
+            let x = x - (4.0 * w);
+            let y = y - (4.0 * w);
+
+            let grid_x = (x.div_euclid(w)) as i32;
+            let grid_y = (y.div_euclid(w)) as i32;
+
+            let chunk_x = grid_x.div_euclid(2);
+            let chunk_y = grid_y.div_euclid(2);
             log::debug!("Mouse clicked at ({x}, {y})");
+            log::debug!("Grid location ({grid_x}, {grid_y})");
+            log::debug!("Chunk coord ({chunk_x}, {chunk_y})");
         }
+
+        // draw_rectangle_lines(100.0, 100.0, 32.0, 32.0, 2.0, WHITE);
         next_frame().await;
     }
 }
