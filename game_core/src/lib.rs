@@ -4,4 +4,4 @@
 
 pub mod ecs;
 
-pub use ecs::{Entity, EntitySparseSet};
+pub use ecs::{Entity, EntityAllocator, EntitySparseSet};
