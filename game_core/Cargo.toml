@@ -6,3 +6,6 @@ edition = "2021"
 [lib]
 name = "game_core"
 path = "src/lib.rs"
+
+[dependencies]
+log = "0.4"

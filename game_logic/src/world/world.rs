@@ -1,23 +1,27 @@
-use crate::world::{Chunk, ChunkCoords};
-use game_core::Entity;
+use crate::{
+    world::{Chunk, ChunkCoords},
+    Position,
+};
+use game_core::{Entity, EntityAllocator};
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct World {
     pub chunks: HashMap<ChunkCoords, Chunk>,
-    pub entities: Vec<Entity>,
+    pub entities: EntityAllocator,
 }
 
 impl World {
     pub fn new() -> Self {
         Self {
             chunks: HashMap::new(),
-            entities: Vec::new(),
+            entities: EntityAllocator::default(),
         }
     }
-}
 
-impl Default for World {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub fn place_miner(position: Position) {}
+
+    // fn get_chunk_coords_from_position(position: Position) -> ChunkCoords {
+    //
+    // }
 }

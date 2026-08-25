@@ -15,7 +15,7 @@ impl ChunkRenderer {
 
     pub fn render(&self, chunk: &Chunk) {
         for entity in &chunk.entities {
-            self.entity_renderer.render(entity);
+            // self.entity_renderer.render(entity);
         }
     }
 }

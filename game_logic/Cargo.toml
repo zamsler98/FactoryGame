@@ -9,3 +9,4 @@ path = "src/lib.rs"
 
 [dependencies]
 game_core = { path = "../game_core" }
+log = "0.4"

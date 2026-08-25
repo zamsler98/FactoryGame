@@ -5,5 +5,6 @@ edition = "2021"
 
 [dependencies]
 macroquad = "0.4"
+log = "0.4"
 game_core = { path = "../game_core" }
 game_logic = { path = "../game_logic" }
