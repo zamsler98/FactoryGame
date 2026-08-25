@@ -1,12 +1,12 @@
 use crate::entity::EntityId;
 
+const EMPTY: u32 = u32::MAX;
+
 pub struct EntitySparseSet<T> {
     sparse: Vec<u32>,
     dense: Vec<T>,
     owners: Vec<EntityId>,
 }
-
-const NONE: u32 = u32::MAX;
 
 impl<T> Default for EntitySparseSet<T> {
     fn default() -> Self {
@@ -19,25 +19,25 @@ impl<T> Default for EntitySparseSet<T> {
 }
 
 impl<T> EntitySparseSet<T> {
-    pub fn add(&mut self, id: EntityId, value: T) {
+    pub fn insert(&mut self, id: EntityId, value: T) {
         let index = id.index as usize;
         if index >= self.sparse.len() {
-            self.sparse.resize(index + 1, NONE)
+            self.sparse.resize(index + 1, EMPTY)
         }
-        if self.sparse[index] != NONE {
-            let dense_location = self.sparse[index] as usize;
-            self.dense[dense_location] = value;
-            self.owners[dense_location] = id;
-        } else {
+        if self.sparse[index] == EMPTY {
             self.sparse[index] = self.dense.len() as u32;
             self.dense.push(value);
             self.owners.push(id);
+        } else {
+            let dense_index = self.sparse[index] as usize;
+            self.dense[dense_index] = value;
+            self.owners[dense_index] = id;
         }
     }
 
     pub fn remove(&mut self, id: EntityId) -> Option<T> {
         let dense_index = self.get_dense_index(id)?;
-        self.sparse[id.index as usize] = NONE;
+        self.sparse[id.index as usize] = EMPTY;
         let value = self.dense.swap_remove(dense_index);
         self.owners.swap_remove(dense_index);
         if dense_index < self.owners.len() {
@@ -54,11 +54,11 @@ impl<T> EntitySparseSet<T> {
 
     fn get_dense_index(&self, id: EntityId) -> Option<usize> {
         let dense_index = *self.sparse.get(id.index as usize)?;
-        if dense_index == NONE {
+        if dense_index == EMPTY {
             return None;
         }
-        let d = dense_index as usize;
-        (self.owners[d] == id).then_some(d)
+        let dense_index = dense_index as usize;
+        (self.owners[dense_index] == id).then_some(dense_index)
     }
 }
 
@@ -74,34 +74,34 @@ mod tests {
     }
 
     #[test]
-    fn add_entity() {
+    fn insert_entity() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = EntityId::new(0, 0);
-        set.add(id, to_store);
+        set.insert(id, to_store);
         let stored = set.get(id).expect("entity should be stored");
-        assert_eq!(to_store, *stored);
+        assert_eq!(*stored, to_store);
     }
 
     #[test]
-    fn add_entity_not_next() {
+    fn insert_entity_not_next() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = EntityId::new(10, 0);
-        set.add(id, to_store);
+        set.insert(id, to_store);
         let stored = set.get(id).expect("entity should be stored");
-        assert_eq!(to_store, *stored);
+        assert_eq!(*stored, to_store);
     }
 
     #[test]
-    fn add_overwrite_old_slot() {
+    fn insert_overwrite_old_slot() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = EntityId::new(10, 0);
-        set.add(id, 37);
-        set.add(id, to_store);
+        set.insert(id, 37);
+        set.insert(id, to_store);
         let stored = set.get(id).expect("entity should be stored");
-        assert_eq!(to_store, *stored);
+        assert_eq!(*stored, to_store);
     }
 
     #[test]
@@ -109,7 +109,7 @@ mod tests {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = EntityId::new(10, 0);
-        set.add(id, to_store);
+        set.insert(id, to_store);
         let removed = set.remove(id).expect("removed value should be returned");
         assert_eq!(removed, to_store);
         let stored = set.get(id);
@@ -121,7 +121,7 @@ mod tests {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let id = EntityId::new(10, 0);
         let removed = set.remove(id);
-        assert_eq!(None, removed);
+        assert_eq!(removed, None);
         let stored = set.get(id);
         assert_eq!(stored, None);
     }
@@ -131,9 +131,9 @@ mod tests {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let id = EntityId::new(10, 0);
         let to_store: u32 = 42;
-        set.add(id, 32);
+        set.insert(id, 32);
         set.remove(id);
-        set.add(id, to_store);
+        set.insert(id, to_store);
         let stored = set.get(id).expect("should return new stored value");
         assert_eq!(*stored, to_store);
     }
@@ -143,24 +143,24 @@ mod tests {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = EntityId::new(10, 0);
-        set.add(id, to_store);
+        set.insert(id, to_store);
         let id2 = EntityId::new(10, 1);
         let stored = set.get(id2);
-        assert_eq!(None, stored);
+        assert_eq!(stored, None);
     }
 
     #[test]
-    fn add_new_generation() {
+    fn insert_new_generation() {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = EntityId::new(10, 0);
-        set.add(id, 37);
+        set.insert(id, 37);
         let id2 = EntityId::new(10, 1);
-        set.add(id2, to_store);
+        set.insert(id2, to_store);
         let get_from_id_1 = set.get(id);
-        assert_eq!(None, get_from_id_1);
+        assert_eq!(get_from_id_1, None);
         let get_from_id_2 = set.get(id2).expect("id2 should have result stored");
-        assert_eq!(to_store, *get_from_id_2);
+        assert_eq!(*get_from_id_2, to_store);
     }
 
     #[test]
@@ -169,14 +169,14 @@ mod tests {
         let to_store: u32 = 42;
         let id = EntityId::new(0, 0);
         let id2 = EntityId::new(1, 0);
-        set.add(id, 37);
-        set.add(id2, to_store);
+        set.insert(id, 37);
+        set.insert(id2, to_store);
 
         assert_eq!(set.remove(id), Some(37));
         assert_eq!(set.get(id), None);
         assert_eq!(set.get(id2), Some(&to_store));
 
-        set.add(id, 37);
+        set.insert(id, 37);
         assert_eq!(set.get(id), Some(&37));
         assert_eq!(set.get(id2), Some(&to_store));
     }
@@ -186,10 +186,10 @@ mod tests {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = EntityId::new(0, 0);
-        set.add(id, to_store);
+        set.insert(id, to_store);
         set.remove(id);
         let value = set.remove(id);
-        assert_eq!(None, value);
+        assert_eq!(value, None);
     }
 
     #[test]
@@ -198,10 +198,10 @@ mod tests {
         let to_store: u32 = 42;
         let id = EntityId::new(0, 0);
         let id2 = EntityId::new(0, 1);
-        set.add(id, to_store);
+        set.insert(id, to_store);
         let value = set.remove(id2);
-        assert_eq!(None, value);
+        assert_eq!(value, None);
         let stored = set.get(id).expect("value should be returned");
-        assert_eq!(to_store, *stored)
+        assert_eq!(*stored, to_store)
     }
 }
