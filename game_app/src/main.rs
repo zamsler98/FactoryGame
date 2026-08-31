@@ -9,7 +9,8 @@ use game_logic::{Chunk, ChunkCoords};
 use macroquad::prelude::*;
 
 mod chunk_renderer;
-mod entity_renderers;
+// Unwired until chunks can resolve their entity handles into drawable EntityInfo.
+// mod entity_renderers;
 mod macroquad_logger;
 
 use chunk_renderer::ChunkRenderer;
@@ -51,8 +52,8 @@ async fn main() {
             chunk_renderer.render(chunk);
         }
 
-        let bot_right_x = camera_position_x + view_w;
-        let bot_right_y = camera_position_y + VIEW_H;
+        // let bot_right_x = camera_position_x + view_w;
+        // let bot_right_y = camera_position_y + VIEW_H;
         // log::debug!(
         //     "Current camera position: ({camera_position_x},{camera_position_y}),({bot_right_x}, {bot_right_y})"
         // );

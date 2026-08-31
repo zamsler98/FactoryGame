@@ -1,4 +1,4 @@
-use crate::entity_renderers::EntityRenderer;
+// use crate::entity_renderers::EntityRenderer;
 use game_logic::Chunk;
 use macroquad::{color::WHITE, shapes::draw_rectangle_lines, text::draw_text};
 
@@ -15,13 +15,13 @@ const CHUNK_LINE_THICKNESS: f32 = 2.0;
 
 /// Renders every entity in a chunk.
 pub struct ChunkRenderer {
-    entity_renderer: EntityRenderer,
+    // entity_renderer: EntityRenderer,
 }
 
 impl ChunkRenderer {
     pub async fn load() -> Self {
         Self {
-            entity_renderer: EntityRenderer::load().await,
+            // entity_renderer: EntityRenderer::load().await,
         }
     }
 

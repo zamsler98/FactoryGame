@@ -2,7 +2,7 @@ use crate::{
     Position,
     world::{Chunk, ChunkCoords},
 };
-use game_core::{Entity, EntityAllocator};
+use game_core::EntityAllocator;
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -19,7 +19,7 @@ impl World {
         }
     }
 
-    pub fn place_miner(position: Position) {}
+    pub fn place_miner(_position: Position) {}
 
     // fn get_chunk_coords_from_position(position: Position) -> ChunkCoords {
     //
