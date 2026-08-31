@@ -56,11 +56,11 @@ impl EntityAllocator {
     /// Unknown entities, stale generations, and entities that were already
     /// despawned are ignored.
     pub fn despawn(&mut self, entity: Entity) {
-        if let Some(generation) = self.generations.get_mut(entity.index() as usize) {
-            if *generation == entity.generation() {
-                *generation += 1;
-                self.free_indices.push(entity.index());
-            }
+        if let Some(generation) = self.generations.get_mut(entity.index() as usize)
+            && *generation == entity.generation()
+        {
+            *generation += 1;
+            self.free_indices.push(entity.index());
         }
     }
 
