@@ -31,6 +31,12 @@ async fn main() {
     loop {
         clear_background(BLACK);
         chunk_renderer.render(&chunk);
+        const VIEW_H: f32 = 600.0;
+        let view_w = VIEW_H * screen_width() / screen_height();
+
+        set_camera(&Camera2D::from_display_rect(Rect::new(
+            15.0, 15.0, view_w, VIEW_H,
+        )));
 
         let w = 15.0;
         for i in 0..8 {
