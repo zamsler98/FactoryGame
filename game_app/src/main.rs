@@ -5,7 +5,7 @@
 //! Only this crate depends on `macroquad`.
 //!
 
-use game_logic::Chunk;
+use game_logic::{Chunk, ChunkCoords};
 use macroquad::prelude::*;
 
 mod chunk_renderer;
@@ -19,15 +19,12 @@ async fn main() {
     macroquad_logger::init_logging();
     let chunk_renderer = ChunkRenderer::load().await;
 
-    let mut chunk = game_logic::Chunk::new();
-    // chunk.add_entity(game_logic::EntityInfo {
-    //     entity_type: game_logic::EntityType::Miner,
-    //     position: game_logic::Position { x: 10, y: 10 },
-    // });
-    // chunk.add_entity(game_logic::EntityInfo {
-    //     entity_type: game_logic::EntityType::Miner,
-    //     position: game_logic::Position { x: 50, y: 50 },
-    // });
+    let chunks = [
+        Chunk::new(ChunkCoords::new(0, 0)),
+        Chunk::new(ChunkCoords::new(1, 0)),
+        Chunk::new(ChunkCoords::new(0, 1)),
+        Chunk::new(ChunkCoords::new(1, 1)),
+    ];
 
     let mut prev_mouse_position_x: Option<f32> = None;
     let mut prev_mouse_position_y: Option<f32> = None;
@@ -50,7 +47,9 @@ async fn main() {
             zoom: vec2(2.0 / view_w, 2.0 / VIEW_H),
             ..Default::default()
         });
-        chunk_renderer.render(&chunk);
+        for chunk in &chunks {
+            chunk_renderer.render(chunk);
+        }
 
         let bot_right_x = camera_position_x + view_w;
         let bot_right_y = camera_position_y + VIEW_H;

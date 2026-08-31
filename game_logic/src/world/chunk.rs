@@ -12,11 +12,17 @@ pub struct ChunkCoords {
     pub y: i32,
 }
 
+impl ChunkCoords {
+    pub fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+}
+
 impl Chunk {
-    pub fn new() -> Self {
+    pub fn new(coords: ChunkCoords) -> Self {
         Self {
             entities: Vec::new(),
-            coords: ChunkCoords::default(),
+            coords,
         }
     }
     pub fn add_entity(&mut self, entity: Entity) {
