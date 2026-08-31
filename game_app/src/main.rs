@@ -39,12 +39,17 @@ async fn main() {
         const VIEW_H: f32 = 600.0;
         let view_w = VIEW_H * screen_width() / screen_height();
 
-        set_camera(&Camera2D::from_display_rect(Rect::new(
-            camera_position_x,
-            camera_position_y,
-            view_w,
-            VIEW_H,
-        )));
+        // Y-down camera: macroquad's `matrix()` negates `zoom.y` when rendering to the
+        // screen, so a positive `zoom.y` here is what makes +Y point down. Using
+        // `Camera2D::from_display_rect` instead would double-negate and flip text.
+        set_camera(&Camera2D {
+            target: vec2(
+                camera_position_x + view_w / 2.0,
+                camera_position_y + VIEW_H / 2.0,
+            ),
+            zoom: vec2(2.0 / view_w, 2.0 / VIEW_H),
+            ..Default::default()
+        });
         chunk_renderer.render(&chunk);
 
         let bot_right_x = camera_position_x + view_w;
@@ -86,7 +91,7 @@ async fn main() {
                 let diff_y = prev_y - y;
 
                 camera_position_x += diff_x;
-                camera_position_y -= diff_y;
+                camera_position_y += diff_y;
             }
             prev_mouse_position_x = Some(x);
             prev_mouse_position_y = Some(y);
