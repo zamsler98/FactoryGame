@@ -1,5 +1,5 @@
-use super::miner_renderer::MinerRenderer;
 use super::RenderEntity;
+use super::miner_renderer::MinerRenderer;
 use game_logic::{EntityInfo, EntityType};
 
 /// Owns one renderer per entity type and dispatches each entity to the right one.

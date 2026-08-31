@@ -3,7 +3,7 @@ use game_logic::EntityInfo;
 use macroquad::{
     color::WHITE,
     math::vec2,
-    texture::{draw_texture_ex, load_texture, DrawTextureParams, FilterMode, Texture2D},
+    texture::{DrawTextureParams, FilterMode, Texture2D, draw_texture_ex, load_texture},
 };
 
 pub struct MinerRenderer {
