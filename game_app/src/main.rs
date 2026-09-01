@@ -12,8 +12,10 @@ mod chunk_renderer;
 // Unwired until chunks can resolve their entity handles into drawable EntityInfo.
 // mod entity_renderers;
 mod macroquad_logger;
+mod main_camera;
 
 use chunk_renderer::ChunkRenderer;
+use main_camera::MainCamera;
 
 #[macroquad::main("FactoryGame - Macroquad")]
 async fn main() {
@@ -29,34 +31,15 @@ async fn main() {
 
     let mut prev_mouse_position_x: Option<f32> = None;
     let mut prev_mouse_position_y: Option<f32> = None;
-    let mut camera_position_x = 0.0;
-    let mut camera_position_y = 0.0;
+    let mut main_camera = MainCamera::default();
 
     loop {
         clear_background(BLACK);
-        const VIEW_H: f32 = 600.0;
-        let view_w = VIEW_H * screen_width() / screen_height();
 
-        // Y-down camera: macroquad's `matrix()` negates `zoom.y` when rendering to the
-        // screen, so a positive `zoom.y` here is what makes +Y point down. Using
-        // `Camera2D::from_display_rect` instead would double-negate and flip text.
-        set_camera(&Camera2D {
-            target: vec2(
-                camera_position_x + view_w / 2.0,
-                camera_position_y + VIEW_H / 2.0,
-            ),
-            zoom: vec2(2.0 / view_w, 2.0 / VIEW_H),
-            ..Default::default()
-        });
+        main_camera.use_camera();
         for chunk in &chunks {
             chunk_renderer.render(chunk);
         }
-
-        // let bot_right_x = camera_position_x + view_w;
-        // let bot_right_y = camera_position_y + VIEW_H;
-        // log::debug!(
-        //     "Current camera position: ({camera_position_x},{camera_position_y}),({bot_right_x}, {bot_right_y})"
-        // );
 
         // let w = 15.0;
         // for i in 0..8 {
@@ -87,11 +70,7 @@ async fn main() {
             if let Some(prev_x) = prev_mouse_position_x
                 && let Some(prev_y) = prev_mouse_position_y
             {
-                let diff_x = prev_x - x;
-                let diff_y = prev_y - y;
-
-                camera_position_x += diff_x;
-                camera_position_y += diff_y;
+                main_camera.pan(vec2(prev_x - x, prev_y - y));
             }
             prev_mouse_position_x = Some(x);
             prev_mouse_position_y = Some(y);
