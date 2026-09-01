@@ -20,8 +20,4 @@ impl World {
     }
 
     pub fn place_miner(_position: Position) {}
-
-    // fn get_chunk_coords_from_position(position: Position) -> ChunkCoords {
-    //
-    // }
 }
