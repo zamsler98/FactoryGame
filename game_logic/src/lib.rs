@@ -3,7 +3,9 @@
 
 mod world;
 
-pub use world::{Chunk, ChunkCoords, EntityInfo, EntityType, Position, World};
+pub use world::{
+    CHUNK_SIZE, CHUNK_TILES, Chunk, ChunkCoords, EntityInfo, EntityType, Position, TILE_SIZE, World,
+};
 
 /// `InputFrame` is the platform-agnostic input snapshot.
 /// The platform layer (`game_app`) fills this each frame and passes to logic.

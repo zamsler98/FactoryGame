@@ -1,13 +1,7 @@
 // use crate::entity_renderers::EntityRenderer;
-use game_logic::Chunk;
+use game_logic::{CHUNK_SIZE, CHUNK_TILES, Chunk, TILE_SIZE};
 use macroquad::{color::WHITE, shapes::draw_rectangle_lines, text::draw_text};
 
-/// Width and height of a chunk, in tiles.
-const CHUNK_TILES: u32 = 8;
-/// Width and height of a tile, in world units.
-const TILE_SIZE: f32 = 32.0;
-/// Width and height of a chunk, in world units.
-const CHUNK_SIZE: f32 = CHUNK_TILES as f32 * TILE_SIZE;
 /// Line thickness of the tile grid.
 const TILE_LINE_THICKNESS: f32 = 1.0;
 /// Line thickness of the chunk border, drawn bolder than the tile grid.
