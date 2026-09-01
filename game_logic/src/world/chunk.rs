@@ -1,4 +1,4 @@
-use game_core::Entity;
+use game_core::{Entity, Vec2i};
 
 use crate::Position;
 
@@ -15,24 +15,26 @@ pub struct Chunk {
     pub coords: ChunkCoords,
 }
 
+/// A chunk index. Wraps a `Vec2i` rather than aliasing it so chunk indices
+/// cannot be confused with the world-unit `Position` they scale from.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct ChunkCoords {
-    pub x: i32,
-    pub y: i32,
-}
+pub struct ChunkCoords(pub Vec2i);
 
 impl ChunkCoords {
-    pub fn new(x: i32, y: i32) -> Self {
-        Self { x, y }
+    pub const fn new(x: i32, y: i32) -> Self {
+        Self(Vec2i::new(x, y))
     }
 
     /// The chunk containing `position`. Euclidean division so that negative
     /// coordinates floor toward the chunk they sit in rather than toward zero.
-    pub fn from_position(position: Position) -> Self {
-        Self {
-            x: position.x.div_euclid(CHUNK_SIZE),
-            y: position.y.div_euclid(CHUNK_SIZE),
-        }
+    pub const fn from_position(position: Position) -> Self {
+        Self(position.div_euclid(CHUNK_SIZE))
+    }
+
+    /// The world position of this chunk's top-left corner. The inverse of
+    /// `from_position`, rounded down to the chunk it names.
+    pub fn origin(self) -> Position {
+        self.0 * CHUNK_SIZE
     }
 }
 
@@ -71,6 +73,31 @@ mod tests {
         let position = Position { x: -260, y: -260 };
         let chunk_coords = ChunkCoords::from_position(position);
         assert_eq!(chunk_coords, ChunkCoords::new(-2, -2));
+    }
+
+    /// `origin` names the corner of the chunk, so feeding it back through
+    /// `from_position` must land on the same chunk.
+    #[test]
+    fn origin_round_trips_through_from_position() {
+        for coords in [
+            ChunkCoords::new(0, 0),
+            ChunkCoords::new(2, 3),
+            ChunkCoords::new(-2, -3),
+        ] {
+            assert_eq!(ChunkCoords::from_position(coords.origin()), coords);
+        }
+    }
+
+    #[test]
+    fn origin_scales_indices_to_world_units() {
+        assert_eq!(ChunkCoords::new(0, 0).origin(), Position { x: 0, y: 0 });
+        assert_eq!(
+            ChunkCoords::new(1, -2).origin(),
+            Position {
+                x: CHUNK_SIZE,
+                y: -2 * CHUNK_SIZE,
+            }
+        );
     }
 
     /// The chunk edges: the last unit of a chunk and the first of the next.

@@ -24,10 +24,11 @@ impl RenderEntity for MinerRenderer {
     fn render(&self, entity: &EntityInfo) {
         let rect_w = 100.0;
         let rect_h = 100.0;
+        let position = entity.position.as_vec2f();
         draw_texture_ex(
             &self.texture,
-            entity.position.x as f32,
-            entity.position.y as f32,
+            position.x,
+            position.y,
             WHITE,
             DrawTextureParams {
                 dest_size: Some(vec2(rect_w, rect_h)),

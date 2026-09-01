@@ -24,12 +24,10 @@ impl ChunkRenderer {
     }
 
     pub fn render(&self, chunk: &Chunk) {
-        let x = chunk.coords.x;
-        let y = chunk.coords.y;
-
         // Chunk coords are chunk indices, so scale them up to the world origin.
-        let origin_x = x as f32 * CHUNK_SIZE_F;
-        let origin_y = y as f32 * CHUNK_SIZE_F;
+        let origin = chunk.coords.origin().as_vec2f();
+        let origin_x = origin.x;
+        let origin_y = origin.y;
 
         for i in 0..CHUNK_TILES {
             for j in 0..CHUNK_TILES {
@@ -54,7 +52,7 @@ impl ChunkRenderer {
             WHITE,
         );
 
-        let s = format!("({x},{y})");
+        let s = format!("({},{})", chunk.coords.0.x, chunk.coords.0.y);
         draw_text(&s, origin_x, origin_y + 10.0, 16.0, WHITE);
     }
 }
