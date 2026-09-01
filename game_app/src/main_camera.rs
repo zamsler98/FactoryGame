@@ -1,8 +1,8 @@
 use crate::math_interop::{ToCore, ToMacroquad};
-use game_core::Vec2f;
+use game_core::{Rectf, Vec2f};
 use macroquad::{
     camera::{Camera2D, set_camera},
-    math::{Rect, Vec2, vec2},
+    math::{Vec2, vec2},
     window::{screen_height, screen_width},
 };
 
@@ -16,15 +16,14 @@ pub struct MainCamera {
 impl MainCamera {
     /// The world-space region currently visible, in world units (not pixels).
     #[expect(dead_code, reason = "for the chunk culling that is not wired up yet")]
-    pub fn bounds(&self) -> Rect {
+    pub fn bounds(&self) -> Rectf {
         let camera = self.camera();
         let top_left = camera.screen_to_world(Vec2::ZERO).to_core();
         let bot_right = camera
             .screen_to_world(vec2(screen_width(), screen_height()))
             .to_core();
-        let size = bot_right - top_left;
 
-        Rect::new(top_left.x, top_left.y, size.x, size.y)
+        Rectf::from_corners(top_left, bot_right)
     }
 
     pub fn pan(&mut self, delta: Vec2f) {

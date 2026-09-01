@@ -6,4 +6,4 @@ pub mod ecs;
 pub mod math;
 
 pub use ecs::{Entity, EntityAllocator, EntitySparseSet};
-pub use math::{Vec2, Vec2f, Vec2i};
+pub use math::{Rect, Rectf, Recti, Vec2, Vec2f, Vec2i};

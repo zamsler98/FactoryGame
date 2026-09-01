@@ -3,7 +3,7 @@
 
 mod world;
 
-pub use game_core::{Vec2, Vec2f, Vec2i};
+pub use game_core::{Rect, Rectf, Recti, Vec2, Vec2f, Vec2i};
 pub use world::{
     CHUNK_SIZE, CHUNK_TILES, Chunk, ChunkCoords, EntityInfo, EntityType, Position, TILE_SIZE, World,
 };
