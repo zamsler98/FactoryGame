@@ -47,6 +47,11 @@ impl Vec2f {
     pub fn floor(self) -> Vec2i {
         Vec2i::new(self.x.floor() as i32, self.y.floor() as i32)
     }
+
+    /// Ceilings each component toward positive infinity and converts it to `i32`.
+    pub fn ceil(self) -> Vec2i {
+        Vec2i::new(self.x.ceil() as i32, self.y.ceil() as i32)
+    }
 }
 
 impl<T: Add<Output = T>> Add for Vec2<T> {
@@ -171,5 +176,11 @@ mod tests {
     fn floor_always_goes_down() {
         assert_eq!(Vec2f::new(1.7, 8.2).floor(), Vec2i::new(1, 8));
         assert_eq!(Vec2f::new(-1.7, -8.2).floor(), Vec2i::new(-2, -9));
+    }
+
+    #[test]
+    fn ceil_always_goes_up() {
+        assert_eq!(Vec2f::new(1.7, 8.2).ceil(), Vec2i::new(2, 9));
+        assert_eq!(Vec2f::new(-1.7, -8.2).ceil(), Vec2i::new(-1, -8));
     }
 }
