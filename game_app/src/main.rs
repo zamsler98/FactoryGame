@@ -6,7 +6,7 @@
 //!
 
 use game_core::Vec2f;
-use game_logic::{Chunk, ChunkCoords};
+use game_logic::{CHUNK_TILES, Chunk, ChunkCoords, TILE_SIZE, World};
 use macroquad::prelude::*;
 
 mod chunk_renderer;
@@ -24,20 +24,15 @@ async fn main() {
     macroquad_logger::init_logging();
     let chunk_renderer = ChunkRenderer::load().await;
 
-    let chunks = [
-        Chunk::new(ChunkCoords::new(0, 0)),
-        Chunk::new(ChunkCoords::new(1, 0)),
-        Chunk::new(ChunkCoords::new(0, 1)),
-        Chunk::new(ChunkCoords::new(1, 1)),
-    ];
-
     let mut prev_mouse_position: Option<Vec2f> = None;
     let mut main_camera = MainCamera::default();
+    let mut world = World::new();
 
     loop {
         clear_background(BLACK);
 
         main_camera.use_camera();
+        let chunks = world.chunks_overlapping_rect_or_create(main_camera.bounds());
         for chunk in &chunks {
             chunk_renderer.render(chunk);
         }
@@ -78,7 +73,14 @@ async fn main() {
             prev_mouse_position = None;
         }
 
-        // draw_rectangle_lines(100.0, 100.0, 32.0, 32.0, 2.0, WHITE);
+        let bounds = main_camera.bounds();
+
+        let x = bounds.position.x;
+        let y = bounds.position.y;
+        let x_chunk = x / (CHUNK_TILES * TILE_SIZE) as f32;
+        let y_chunk = y / (CHUNK_TILES * TILE_SIZE) as f32;
+        log::debug!("Camera bounds ({x},{y}). Chunk coords: ({x_chunk}, {y_chunk})");
+
         next_frame().await;
     }
 }
