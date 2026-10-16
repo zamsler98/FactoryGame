@@ -8,12 +8,25 @@ use macroquad::{
 
 const VIEW_HEIGHT: f32 = 600.0;
 
-#[derive(Default)]
 pub struct MainCamera {
     pub position: Vec2f,
+    pub view_height: f32,
+}
+
+impl Default for MainCamera {
+    fn default() -> Self {
+        Self::new(VIEW_HEIGHT)
+    }
 }
 
 impl MainCamera {
+    pub const fn new(view_height: f32) -> Self {
+        Self {
+            position: Vec2f::ZERO,
+            view_height,
+        }
+    }
+
     /// The world-space region currently visible, in world units (not pixels).
     #[expect(dead_code, reason = "for the chunk culling that is not wired up yet")]
     pub fn bounds(&self) -> Rectf {
@@ -35,15 +48,15 @@ impl MainCamera {
     }
 
     fn camera(&self) -> Camera2D {
-        let view_w = VIEW_HEIGHT * screen_width() / screen_height();
-        let half_view = Vec2f::new(view_w, VIEW_HEIGHT) / 2.0;
+        let view_w = self.view_height * screen_width() / screen_height();
+        let half_view = Vec2f::new(view_w, self.view_height) / 2.0;
 
         // Y-down camera: macroquad's `matrix()` negates `zoom.y` when rendering to the
         // screen, so a positive `zoom.y` here is what makes +Y point down. Using
         // `Camera2D::from_display_rect` instead would double-negate and flip text.
         Camera2D {
             target: (self.position + half_view).to_macroquad(),
-            zoom: vec2(2.0 / view_w, 2.0 / VIEW_HEIGHT),
+            zoom: vec2(2.0 / view_w, 2.0 / self.view_height),
             ..Default::default()
         }
     }
