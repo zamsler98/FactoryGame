@@ -42,6 +42,11 @@ impl Vec2i {
 
 impl Vec2f {
     pub const ZERO: Self = Self::new(0.0, 0.0);
+
+    /// Floors each component toward negative infinity and converts it to `i32`.
+    pub fn floor(self) -> Vec2i {
+        Vec2i::new(self.x.floor() as i32, self.y.floor() as i32)
+    }
 }
 
 impl<T: Add<Output = T>> Add for Vec2<T> {
@@ -160,5 +165,11 @@ mod tests {
     #[test]
     fn as_vec2f_widens_components() {
         assert_eq!(Vec2i::new(-2, 5).as_vec2f(), Vec2f::new(-2.0, 5.0));
+    }
+
+    #[test]
+    fn floor_always_goes_down() {
+        assert_eq!(Vec2f::new(1.7, 8.2).floor(), Vec2i::new(1, 8));
+        assert_eq!(Vec2f::new(-1.7, -8.2).floor(), Vec2i::new(-2, -9));
     }
 }
