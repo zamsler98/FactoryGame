@@ -6,7 +6,7 @@
 //!
 
 use game_core::Vec2f;
-use game_logic::{CHUNK_TILES, Chunk, ChunkCoords, TILE_SIZE, World};
+use game_logic::{CHUNK_TILES, TILE_SIZE, World};
 use macroquad::prelude::*;
 
 mod chunk_renderer;

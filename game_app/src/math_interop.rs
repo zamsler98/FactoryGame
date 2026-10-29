@@ -20,10 +20,6 @@ impl ToMacroquad for Vec2f {
 }
 
 /// Converts out of Macroquad's `Vec2`, for taking a result back into our state.
-#[expect(
-    dead_code,
-    reason = "only reached from MainCamera::bounds, which is not wired up yet"
-)]
 pub trait ToCore {
     fn to_core(self) -> Vec2f;
 }

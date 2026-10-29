@@ -28,7 +28,6 @@ impl MainCamera {
     }
 
     /// The world-space region currently visible, in world units (not pixels).
-    #[expect(dead_code, reason = "for the chunk culling that is not wired up yet")]
     pub fn bounds(&self) -> Rectf {
         let camera = self.camera();
         let top_left = camera.screen_to_world(Vec2::ZERO).to_core();

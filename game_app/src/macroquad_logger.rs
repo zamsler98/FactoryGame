@@ -13,11 +13,21 @@ impl Log for MacroquadLogger {
         let message = format!("[{}] {}", record.target(), record.args());
 
         match record.level() {
-            Level::Error => macroquad::logging::error!("{}", message),
-            Level::Warn => macroquad::logging::warn!("{}", message),
-            Level::Info => macroquad::logging::info!("{}", message),
-            Level::Debug => macroquad::logging::debug!("{}", message),
-            Level::Trace => macroquad::logging::trace!("{}", message),
+            Level::Error => {
+                macroquad::logging::error!("{}", message);
+            }
+            Level::Warn => {
+                macroquad::logging::warn!("{}", message);
+            }
+            Level::Info => {
+                macroquad::logging::info!("{}", message);
+            }
+            Level::Debug => {
+                macroquad::logging::debug!("{}", message);
+            }
+            Level::Trace => {
+                macroquad::logging::trace!("{}", message);
+            }
         }
     }
 

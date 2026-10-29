@@ -1,6 +1,6 @@
 use crate::{
     CHUNK_SIZE, Position,
-    world::{Chunk, ChunkCoords, chunk},
+    world::{Chunk, ChunkCoords},
 };
 use game_core::{EntityAllocator, Rectf};
 use std::collections::HashMap;
