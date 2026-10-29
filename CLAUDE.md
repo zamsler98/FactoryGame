@@ -29,15 +29,16 @@ This is a Cargo workspace with three crates enforcing strict dependency layering
 game_core  ←  game_logic  ←  game_app
 ```
 
-- **`game_core`** — Pure game state: `World` and `TileGrid`. No Macroquad, no platform APIs. Deterministic and headless-testable. Contains the 1000×1000 tile grid and building placement/removal.
-- **`game_logic`** — Game rules and building placement. Depends only on `game_core`. Exposes `InputFrame` (platform-agnostic input snapshot) and placement helpers (`try_place_building`, `grid_snapshot`) that `game_app` calls each frame. Must never call Macroquad directly.
-- **`game_app`** — Macroquad entry point. Captures platform input, fills `InputFrame`, drives building placement, and renders. Only crate that depends on Macroquad. Handles camera/panning, HUD, and WASM glue.
+- **`game_core`** — Pure game state: `World`, `TileGrid`, and `Chunk`/`Entity`. No Macroquad, no platform APIs. Deterministic and headless-testable. Contains the 1000×1000 tile grid and building placement/removal.
+- **`game_logic`** — Game rules and building placement. Depends only on `game_core`. Exposes `InputFrame` (platform-agnostic input snapshot) and placement helpers (`try_place_building`, `grid_snapshot`). Must never call Macroquad directly. Not currently wired into `game_app` — input handling and placement are pending a rewrite.
+- **`game_app`** — Macroquad entry point. Captures platform input and renders. Only crate that depends on Macroquad. Handles camera/panning, HUD, and WASM glue.
 
 ### Key types
 
 - `TileGrid` (`game_core/src/grid.rs`) — sparse 1000×1000 grid backed by `Vec<Option<InstanceId>>` + `HashMap<InstanceId, BuildingInstance>`. Buildings have `spec_id` (1=conveyor, 2=miner, 3=smelter) and `Rotation`.
+- `Entity` / `EntityType` (`game_core/src/entity.rs`) — an entity is a `Position` plus an `EntityType` variant; `Chunk` (`game_core/src/world/chunk.rs`) holds them in a `Vec`.
 - `InputFrame` (`game_logic/src/lib.rs`) — platform-agnostic per-frame input: `action`, `pointer`.
-- `render_grid.rs` (`game_app`) — viewport-culled tile renderer; `TILE_PX = 32.0`.
+- Rendering (`game_app`) — `ChunkRenderer` draws a chunk by handing each entity to `EntityRenderer`, which matches on `EntityType` and dispatches to a per-type renderer (e.g. `MinerRenderer`) implementing the `RenderEntity` trait. One renderer instance per type, shared across all entities, so each texture loads once.
 
 ### Web deployment
 
