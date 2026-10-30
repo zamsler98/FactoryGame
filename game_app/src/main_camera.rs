@@ -1,5 +1,6 @@
 use crate::math_interop::{ToCore, ToMacroquad};
 use game_core::{Rectf, Vec2f};
+use game_logic::WorldCoords;
 use macroquad::{
     camera::{Camera2D, set_camera},
     math::{Vec2, vec2},
@@ -25,6 +26,16 @@ impl MainCamera {
             position: Vec2f::ZERO,
             view_height,
         }
+    }
+
+    /// The whole-unit world position containing the screen point.
+    pub fn screen_to_world(&self, screen_coords: Vec2) -> WorldCoords {
+        let position = self
+            .camera()
+            .screen_to_world(screen_coords)
+            .to_core()
+            .floor();
+        WorldCoords::new(position.x, position.y)
     }
 
     /// The world-space region currently visible, in world units (not pixels).

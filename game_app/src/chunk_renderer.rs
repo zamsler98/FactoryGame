@@ -1,6 +1,8 @@
 // use crate::entity_renderers::EntityRenderer;
-use game_logic::{CHUNK_SIZE, CHUNK_TILES, Chunk, TILE_SIZE};
+use game_logic::{CHUNK_SIZE, CHUNK_TILES, Chunk, TILE_SIZE, World};
 use macroquad::{color::WHITE, shapes::draw_rectangle_lines, text::draw_text};
+
+use crate::entity_renderers::EntityRenderer;
 
 /// `TILE_SIZE` as a float, since every drawing call takes one.
 const TILE_SIZE_F: f32 = TILE_SIZE as f32;
@@ -13,21 +15,21 @@ const CHUNK_LINE_THICKNESS: f32 = 2.0;
 
 /// Renders every entity in a chunk.
 pub struct ChunkRenderer {
-    // entity_renderer: EntityRenderer,
+    entity_renderer: EntityRenderer,
 }
 
 impl ChunkRenderer {
     pub async fn load() -> Self {
         Self {
-            // entity_renderer: EntityRenderer::load().await,
+            entity_renderer: EntityRenderer::load().await,
         }
     }
 
-    pub fn render(&self, chunk: &Chunk) {
+    pub fn render(&self, chunk: &Chunk, world: &World) {
         // Chunk coords are chunk indices, so scale them up to the world origin.
-        let origin = chunk.coords.origin().as_vec2f();
-        let origin_x = origin.x;
-        let origin_y = origin.y;
+        let origin = chunk.coords.world_origin();
+        let origin_x = origin.x as f32;
+        let origin_y = origin.y as f32;
 
         for i in 0..CHUNK_TILES {
             for j in 0..CHUNK_TILES {
@@ -52,7 +54,14 @@ impl ChunkRenderer {
             WHITE,
         );
 
-        let s = format!("({},{})", chunk.coords.0.x, chunk.coords.0.y);
+        let s = format!("({},{})", chunk.coords.x, chunk.coords.y);
         draw_text(&s, origin_x, origin_y + 10.0, 16.0, WHITE);
+
+        for &entity in &chunk.entities {
+            let maybe_entity_info = world.entity_infos.get(entity);
+            if let Some(entity_info) = maybe_entity_info {
+                self.entity_renderer.render(entity_info);
+            }
+        }
     }
 }
