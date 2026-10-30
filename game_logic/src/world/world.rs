@@ -22,12 +22,19 @@ impl World {
     }
 
     pub fn place_miner(&mut self, position: GridCoords) {
-        // let entity = self.entity_allocator.spawn();
-        // let entity_info = EntityInfo {
-        //     position,
-        //     entity_type: EntityType::Miner,
-        // };
-        // self.entity_infos.insert(entity, entity_info);
+        let entity = self.entity_allocator.spawn();
+        let entity_info = EntityInfo {
+            position,
+            entity_type: EntityType::Miner,
+        };
+        self.entity_infos.insert(entity, entity_info);
+        let chunk_coords = position.to_chunk_coords();
+        let chunk = self
+            .chunks
+            .entry(chunk_coords)
+            .or_insert_with(|| Chunk::new(chunk_coords));
+
+        chunk.entities.push(entity);
     }
 
     pub fn create_chunks_in_rect(&mut self, rect: Rectf) {
