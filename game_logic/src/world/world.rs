@@ -21,6 +21,14 @@ impl World {
         }
     }
 
+    pub fn remove_miner(&mut self, position: GridCoords) {
+        let entity_option = self.entity_infos.find_first(|x| x.position == position);
+        if let Some((entity, _)) = entity_option {
+            self.entity_allocator.despawn(entity);
+            self.entity_infos.remove(entity);
+        }
+    }
+
     pub fn place_miner(&mut self, position: GridCoords) {
         let entity = self.entity_allocator.spawn();
         let entity_info = EntityInfo {

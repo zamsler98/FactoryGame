@@ -74,16 +74,16 @@ async fn main() {
             let (x, y) = mouse_position();
             let world_coords = main_camera.screen_to_world(Vec2::new(x, y));
             let grid_coords = world_coords.to_grid_coords();
-            let chunk_coords = world_coords.to_chunk_coords();
-            let x_chunk = chunk_coords.x;
-            let y_chunk = chunk_coords.y;
-            let x_world = world_coords.x;
-            let y_world = world_coords.y;
-            let x_grid = grid_coords.x;
-            let y_grid = grid_coords.y;
-            log::debug!(
-                "Mouse position ({x_world},{y_world}). Grid Coords ({x_grid},{y_grid}). Chunk Coords ({x_chunk},{y_chunk})"
-            );
+            // let chunk_coords = world_coords.to_chunk_coords();
+            // let x_chunk = chunk_coords.x;
+            // let y_chunk = chunk_coords.y;
+            // let x_world = world_coords.x;
+            // let y_world = world_coords.y;
+            // let x_grid = grid_coords.x;
+            // let y_grid = grid_coords.y;
+            // log::debug!(
+            //     "Mouse position ({x_world},{y_world}). Grid Coords ({x_grid},{y_grid}). Chunk Coords ({x_chunk},{y_chunk})"
+            // );
             let mouse = Vec2f::new(x, y);
             // Drag the world under the cursor: the camera moves opposite the mouse.
             if let Some(prev) = prev_mouse_position {
@@ -94,6 +94,13 @@ async fn main() {
             prev_mouse_position = Some(mouse);
         } else {
             prev_mouse_position = None;
+        }
+
+        if is_mouse_button_down(MouseButton::Right) {
+            let (x, y) = mouse_position();
+            let world_coords = main_camera.screen_to_world(Vec2::new(x, y));
+            let grid_coords = world_coords.to_grid_coords();
+            world.remove_miner(grid_coords);
         }
 
         // let bounds = main_camera.bounds();
