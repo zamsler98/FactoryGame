@@ -6,7 +6,7 @@
 //!
 
 use game_core::Vec2f;
-use game_logic::{EntityInfo, EntityType, GridCoords, World};
+use game_logic::World;
 use macroquad::prelude::*;
 
 mod chunk_renderer;
@@ -18,8 +18,6 @@ mod math_interop;
 use chunk_renderer::ChunkRenderer;
 use main_camera::MainCamera;
 
-use crate::entity_renderers::EntityRenderer;
-
 #[macroquad::main("FactoryGame - Macroquad")]
 async fn main() {
     macroquad_logger::init_logging();
@@ -28,11 +26,6 @@ async fn main() {
     let mut prev_mouse_position: Option<Vec2f> = None;
     let mut main_camera = MainCamera::default();
     let mut world = World::new();
-    let miner = EntityInfo {
-        position: GridCoords::new(1, 1),
-        entity_type: EntityType::Miner,
-    };
-    let entity_renderer = EntityRenderer::load().await;
 
     loop {
         clear_background(BLACK);
@@ -44,7 +37,6 @@ async fn main() {
         for chunk in &chunks {
             chunk_renderer.render(chunk, &world);
         }
-        entity_renderer.render(&miner);
 
         // let w = 15.0;
         // for i in 0..8 {

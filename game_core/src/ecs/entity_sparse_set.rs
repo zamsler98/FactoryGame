@@ -104,16 +104,6 @@ impl<T> EntitySparseSet<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a EntitySparseSet<T> {
-    type Item = &'a T;
-
-    type IntoIter = std::slice::Iter<'a, T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.dense.iter()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -42,7 +42,7 @@ impl World {
             .entry(chunk_coords)
             .or_insert_with(|| Chunk::new(chunk_coords));
 
-        chunk.entities.push(entity);
+        chunk.add_entity(entity);
     }
 
     pub fn create_chunks_in_rect(&mut self, rect: Rectf) {
