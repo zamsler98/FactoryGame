@@ -35,7 +35,7 @@ async fn main() {
         world.create_chunks_in_rect(bounds);
         let chunks = world.chunks_overlapping_rect(bounds);
         for chunk in &chunks {
-            chunk_renderer.render(chunk, &world);
+            chunk_renderer.render(chunk, &world.entity_registry);
         }
 
         // let w = 15.0;

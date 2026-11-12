@@ -5,8 +5,8 @@ mod world;
 
 pub use game_core::{Rect, Rectf, Recti, Vec2, Vec2f, Vec2i};
 pub use world::{
-    CHUNK_SIZE, CHUNK_TILES, Chunk, ChunkCoords, EntityInfo, EntityType, GridCoords, TILE_SIZE,
-    World, WorldCoords,
+    CHUNK_SIZE, CHUNK_TILES, Chunk, ChunkCoords, EntityInfo, EntityRegistry, EntityType,
+    GridCoords, TILE_SIZE, World, WorldCoords,
 };
 
 /// `InputFrame` is the platform-agnostic input snapshot.

@@ -1,6 +1,6 @@
 use crate::{
     CHUNK_SIZE, EntityInfo, EntityType, GridCoords,
-    world::{Chunk, ChunkCoords},
+    world::{Chunk, ChunkCoords, entity_registry::EntityRegistry},
 };
 use game_core::{EntityAllocator, EntitySparseSet, Rectf};
 use std::collections::HashMap;
@@ -8,34 +8,34 @@ use std::collections::HashMap;
 #[derive(Default)]
 pub struct World {
     chunks: HashMap<ChunkCoords, Chunk>,
-    pub entity_allocator: EntityAllocator,
-    pub entity_infos: EntitySparseSet<EntityInfo>,
+    pub entity_registry: EntityRegistry,
 }
 
 impl World {
     pub fn new() -> Self {
         Self {
             chunks: HashMap::new(),
-            entity_allocator: EntityAllocator::default(),
-            entity_infos: EntitySparseSet::default(),
+            entity_registry: EntityRegistry::default(),
         }
     }
 
     pub fn remove_miner(&mut self, position: GridCoords) {
-        let entity_option = self.entity_infos.find_first(|x| x.position == position);
+        let entity_option = self
+            .entity_registry
+            .infos
+            .find_first(|x| x.position == position);
         if let Some((entity, _)) = entity_option {
-            self.entity_allocator.despawn(entity);
-            self.entity_infos.remove(entity);
+            self.entity_registry.despawn(entity);
         }
     }
 
     pub fn place_miner(&mut self, position: GridCoords) {
-        let entity = self.entity_allocator.spawn();
+        let entity = self.entity_registry.spawn();
         let entity_info = EntityInfo {
             position,
             entity_type: EntityType::Miner,
         };
-        self.entity_infos.insert(entity, entity_info);
+        self.entity_registry.infos.insert(entity, entity_info);
         let chunk_coords = position.to_chunk_coords();
         let chunk = self
             .chunks
