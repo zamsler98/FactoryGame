@@ -52,4 +52,5 @@ package-lock.json
 
 # Output WASM artifacts
 /factorygame.wasm
+/dist/
 

@@ -1,0 +1,62 @@
+use crate::math_interop::{ToCore, ToMacroquad};
+use game_core::{Rectf, Vec2f};
+use macroquad::{
+    camera::{Camera2D, set_camera},
+    math::{Vec2, vec2},
+    window::{screen_height, screen_width},
+};
+
+const VIEW_HEIGHT: f32 = 600.0;
+
+pub struct MainCamera {
+    pub position: Vec2f,
+    pub view_height: f32,
+}
+
+impl Default for MainCamera {
+    fn default() -> Self {
+        Self::new(VIEW_HEIGHT)
+    }
+}
+
+impl MainCamera {
+    pub const fn new(view_height: f32) -> Self {
+        Self {
+            position: Vec2f::ZERO,
+            view_height,
+        }
+    }
+
+    /// The world-space region currently visible, in world units (not pixels).
+    pub fn bounds(&self) -> Rectf {
+        let camera = self.camera();
+        let top_left = camera.screen_to_world(Vec2::ZERO).to_core();
+        let bot_right = camera
+            .screen_to_world(vec2(screen_width(), screen_height()))
+            .to_core();
+
+        Rectf::from_corners(top_left, bot_right)
+    }
+
+    pub fn pan(&mut self, delta: Vec2f) {
+        self.position += delta;
+    }
+
+    pub fn use_camera(&self) {
+        set_camera(&self.camera());
+    }
+
+    fn camera(&self) -> Camera2D {
+        let view_w = self.view_height * screen_width() / screen_height();
+        let half_view = Vec2f::new(view_w, self.view_height) / 2.0;
+
+        // Y-down camera: macroquad's `matrix()` negates `zoom.y` when rendering to the
+        // screen, so a positive `zoom.y` here is what makes +Y point down. Using
+        // `Camera2D::from_display_rect` instead would double-negate and flip text.
+        Camera2D {
+            target: (self.position + half_view).to_macroquad(),
+            zoom: vec2(2.0 / view_w, 2.0 / self.view_height),
+            ..Default::default()
+        }
+    }
+}
