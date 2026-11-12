@@ -6,12 +6,11 @@
 //!
 
 use game_core::Vec2f;
-use game_logic::{CHUNK_TILES, TILE_SIZE, World};
+use game_logic::World;
 use macroquad::prelude::*;
 
 mod chunk_renderer;
-// Unwired until chunks can resolve their entity handles into drawable EntityInfo.
-// mod entity_renderers;
+mod entity_renderers;
 mod macroquad_logger;
 mod main_camera;
 mod math_interop;
@@ -32,9 +31,11 @@ async fn main() {
         clear_background(BLACK);
 
         main_camera.use_camera();
-        let chunks = world.chunks_overlapping_rect_or_create(main_camera.bounds());
+        let bounds = main_camera.bounds();
+        world.create_chunks_in_rect(bounds);
+        let chunks = world.chunks_overlapping_rect(bounds);
         for chunk in &chunks {
-            chunk_renderer.render(chunk);
+            chunk_renderer.render(chunk, &world);
         }
 
         // let w = 15.0;
@@ -63,23 +64,43 @@ async fn main() {
 
         if is_mouse_button_down(MouseButton::Left) {
             let (x, y) = mouse_position();
+            let world_coords = main_camera.screen_to_world(Vec2::new(x, y));
+            let grid_coords = world_coords.to_grid_coords();
+            // let chunk_coords = world_coords.to_chunk_coords();
+            // let x_chunk = chunk_coords.x;
+            // let y_chunk = chunk_coords.y;
+            // let x_world = world_coords.x;
+            // let y_world = world_coords.y;
+            // let x_grid = grid_coords.x;
+            // let y_grid = grid_coords.y;
+            // log::debug!(
+            //     "Mouse position ({x_world},{y_world}). Grid Coords ({x_grid},{y_grid}). Chunk Coords ({x_chunk},{y_chunk})"
+            // );
             let mouse = Vec2f::new(x, y);
             // Drag the world under the cursor: the camera moves opposite the mouse.
             if let Some(prev) = prev_mouse_position {
                 main_camera.pan(prev - mouse);
+            } else {
+                world.place_miner(grid_coords);
             }
             prev_mouse_position = Some(mouse);
         } else {
             prev_mouse_position = None;
         }
 
-        let bounds = main_camera.bounds();
+        if is_mouse_button_down(MouseButton::Right) {
+            let (x, y) = mouse_position();
+            let world_coords = main_camera.screen_to_world(Vec2::new(x, y));
+            let grid_coords = world_coords.to_grid_coords();
+            world.remove_miner(grid_coords);
+        }
 
-        let x = bounds.position.x;
-        let y = bounds.position.y;
-        let x_chunk = x / (CHUNK_TILES * TILE_SIZE) as f32;
-        let y_chunk = y / (CHUNK_TILES * TILE_SIZE) as f32;
-        log::debug!("Camera bounds ({x},{y}). Chunk coords: ({x_chunk}, {y_chunk})");
+        // let bounds = main_camera.bounds();
+        // let x = bounds.position.x;
+        // let y = bounds.position.y;
+        // let x_chunk = x / (CHUNK_TILES * TILE_SIZE) as f32;
+        // let y_chunk = y / (CHUNK_TILES * TILE_SIZE) as f32;
+        // log::debug!("Camera bounds ({x},{y}). Chunk coords: ({x_chunk}, {y_chunk})");
 
         next_frame().await;
     }

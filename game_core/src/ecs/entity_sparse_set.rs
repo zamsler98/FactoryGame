@@ -86,6 +86,14 @@ impl<T> EntitySparseSet<T> {
         self.dense.get(dense_index)
     }
 
+    pub fn find_first(&self, mut predicate: impl FnMut(&T) -> bool) -> Option<(Entity, &T)> {
+        self.owners
+            .iter()
+            .zip(&self.dense)
+            .find(|(_, record)| predicate(record))
+            .map(|(entity, record)| (*entity, record))
+    }
+
     fn get_dense_index(&self, id: Entity) -> Option<usize> {
         let dense_index = *self.sparse.get(id.index() as usize)?;
         if dense_index == EMPTY {
