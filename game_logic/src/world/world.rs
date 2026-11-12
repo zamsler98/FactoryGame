@@ -1,8 +1,8 @@
 use crate::{
-    CHUNK_SIZE, EntityInfo, EntityType, GridCoords,
+    Building, BuildingType, CHUNK_SIZE, GridCoords,
     world::{Chunk, ChunkCoords, entity_registry::EntityRegistry},
 };
-use game_core::{EntityAllocator, EntitySparseSet, Rectf};
+use game_core::{EntityAllocator, EntitySparseSet, Rectf, Vec2i};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -30,10 +30,17 @@ impl World {
     }
 
     pub fn place_miner(&mut self, position: GridCoords) {
+        let size = BuildingType::Miner.size();
+        log::debug!("Placing miner at {position:?}. Size of building: {size:?}");
+        let tiles_to_check = Self::tiles_overlap_building(position, size);
+        if self.check_tiles_occupied(&tiles_to_check) {
+            return;
+        }
+
         let entity = self.entity_registry.spawn();
-        let entity_info = EntityInfo {
+        let entity_info = Building {
             position,
-            entity_type: EntityType::Miner,
+            entity_type: BuildingType::Miner,
         };
         self.entity_registry.infos.insert(entity, entity_info);
         let chunk_coords = position.to_chunk_coords();
@@ -43,6 +50,36 @@ impl World {
             .or_insert_with(|| Chunk::new(chunk_coords));
 
         chunk.add_entity(entity);
+        for tile in tiles_to_check {
+            let chunk_coords = tile.to_chunk_coords();
+            if let Some(tile_chunk) = self.chunks.get_mut(&chunk_coords) {
+                tile_chunk.set_tile_entity(tile, entity);
+            }
+        }
+    }
+
+    pub fn is_space_occupied(&self, top_left: GridCoords, size: Vec2i) -> bool {
+        let tiles_to_check = Self::tiles_overlap_building(top_left, size);
+        self.check_tiles_occupied(&tiles_to_check)
+    }
+
+    fn check_tiles_occupied(&self, tiles: &[GridCoords]) -> bool {
+        tiles.iter().any(|tile| {
+            self.chunks
+                .get(&tile.to_chunk_coords())
+                .is_some_and(|c| c.is_tile_occupied(*tile))
+        })
+    }
+
+    fn tiles_overlap_building(top_left: GridCoords, size: Vec2i) -> Vec<GridCoords> {
+        let mut res: Vec<GridCoords> = Vec::new();
+        for i in top_left.x..(top_left.x + size.x) {
+            for j in top_left.y..(top_left.y + size.y) {
+                let tile_position = GridCoords::new(i, j);
+                res.push(tile_position);
+            }
+        }
+        res
     }
 
     pub fn create_chunks_in_rect(&mut self, rect: Rectf) {

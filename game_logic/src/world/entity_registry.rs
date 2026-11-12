@@ -1,11 +1,11 @@
 use game_core::{Entity, EntityAllocator, EntitySparseSet};
 
-use crate::EntityInfo;
+use crate::Building;
 
 #[derive(Default)]
 pub struct EntityRegistry {
     allocator: EntityAllocator,
-    pub infos: EntitySparseSet<EntityInfo>,
+    pub infos: EntitySparseSet<Building>,
 }
 
 impl EntityRegistry {
