@@ -81,7 +81,11 @@ async fn main() {
             if let Some(prev) = prev_mouse_position {
                 main_camera.pan(prev - mouse);
             } else {
-                world.place_miner(grid_coords);
+                if world.is_tile_occupied(grid_coords) {
+                    world.remove_miner(grid_coords);
+                } else {
+                    world.place_miner(grid_coords);
+                }
             }
             prev_mouse_position = Some(mouse);
         } else {

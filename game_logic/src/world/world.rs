@@ -59,16 +59,17 @@ impl World {
         Some(entity)
     }
 
-    fn is_space_occupied(&self, top_left: GridCoords, size: Vec2i) -> bool {
-        let tiles_to_check = Self::tiles_overlap_building(top_left, size);
-        self.check_tiles_occupied(&tiles_to_check)
+    pub fn is_tile_occupied(&self, tile: GridCoords) -> bool {
+        let tiles = [tile];
+        self.check_tiles_occupied(&tiles)
     }
 
     fn check_tiles_occupied(&self, tiles: &[GridCoords]) -> bool {
         tiles.iter().any(|tile| {
-            self.chunks
-                .get(&tile.to_chunk_coords())
-                .is_some_and(|c| c.is_tile_occupied(*tile))
+            self.chunks.get(&tile.to_chunk_coords()).is_some_and(|c| {
+                let entity = c.entity_on_tile(*tile);
+                entity.is_some_and(|e| self.entity_registry.is_alive(e))
+            })
         })
     }
 
@@ -131,8 +132,7 @@ mod tests {
     fn empty_space_not_occupied() {
         let world = World::new();
         let position = GridCoords::new(2, 2);
-        let size = Vec2i::new(2, 2);
-        let is_occupied = world.is_space_occupied(position, size);
+        let is_occupied = world.is_tile_occupied(position);
         assert!(!is_occupied);
     }
 
@@ -140,8 +140,7 @@ mod tests {
     fn empty_space_between_chunks_not_occupied() {
         let world = World::new();
         let position = GridCoords::new(CHUNK_TILES - 1, CHUNK_TILES - 1);
-        let size = Vec2i::new(2, 2);
-        let is_occupied = world.is_space_occupied(position, size);
+        let is_occupied = world.is_tile_occupied(position);
         assert!(!is_occupied);
     }
 
@@ -152,12 +151,10 @@ mod tests {
         let entity = world.place_miner(position);
         assert!(entity.is_some());
         let size = BuildingType::Miner.size();
-        let is_occupied = world.is_space_occupied(position, size);
-        assert!(is_occupied);
         for i in 0..size.x {
             for j in 0..size.y {
                 let tile_to_check = GridCoords::new(position.x + i, position.y + j);
-                let is_occupied = world.is_space_occupied(tile_to_check, Vec2i::new(1, 1));
+                let is_occupied = world.is_tile_occupied(tile_to_check);
                 assert!(is_occupied)
             }
         }
@@ -171,5 +168,15 @@ mod tests {
         let new_position = GridCoords::new(3, 3);
         let entity = world.place_miner(new_position);
         assert!(entity.is_none())
+    }
+
+    #[test]
+    fn remove_miner_frees_space() {
+        let mut world = World::new();
+        let position = GridCoords::new(2, 2);
+        world.place_miner(position);
+        world.remove_miner(position);
+        let is_occupied = world.is_tile_occupied(position);
+        assert!(!is_occupied)
     }
 }

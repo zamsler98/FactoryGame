@@ -31,9 +31,9 @@ impl Chunk {
         self.entities.push(entity);
     }
 
-    pub fn is_tile_occupied(&self, tile: GridCoords) -> bool {
+    pub fn entity_on_tile(&self, tile: GridCoords) -> Option<Entity> {
         let index = self.index_of_coords(tile);
-        self.tiles[index].is_some()
+        self.tiles[index]
     }
 
     pub fn set_tile_entity(&mut self, tile: GridCoords, entity: Entity) {
@@ -57,8 +57,8 @@ mod tests {
     fn tile_start_not_occupied() {
         let chunk = Chunk::new(ChunkCoords::new(0, 0));
         let tile_coords = GridCoords::new(4, 5);
-        let is_occupied = chunk.is_tile_occupied(tile_coords);
-        assert!(!is_occupied)
+        let entity = chunk.entity_on_tile(tile_coords);
+        assert!(entity.is_none());
     }
 
     #[test]
@@ -68,8 +68,8 @@ mod tests {
         let mut entity_allocator = EntityAllocator::default();
         let entity = entity_allocator.spawn();
         chunk.set_tile_entity(tile_coords, entity);
-        let is_occupied = chunk.is_tile_occupied(tile_coords);
-        assert!(is_occupied);
+        let entity = chunk.entity_on_tile(tile_coords);
+        assert!(entity.is_some());
     }
 
     #[test]
@@ -79,7 +79,7 @@ mod tests {
         let mut entity_allocator = EntityAllocator::default();
         let entity = entity_allocator.spawn();
         chunk.set_tile_entity(tile_coords, entity);
-        let is_occupied = chunk.is_tile_occupied(tile_coords);
-        assert!(is_occupied);
+        let entity = chunk.entity_on_tile(tile_coords);
+        assert!(entity.is_some());
     }
 }
