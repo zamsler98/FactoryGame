@@ -1,5 +1,5 @@
 // use crate::entity_renderers::EntityRenderer;
-use game_logic::{CHUNK_SIZE, CHUNK_TILES, Chunk, EntityRegistry, TILE_SIZE, World};
+use game_logic::{CHUNK_SIZE, CHUNK_TILES, Chunk, EntityRegistry, TILE_SIZE};
 use macroquad::{color::WHITE, shapes::draw_rectangle_lines, text::draw_text};
 
 use crate::entity_renderers::EntityRenderer;
@@ -59,7 +59,7 @@ impl ChunkRenderer {
 
         for &entity in &chunk.entities {
             let is_alive = entity_registry.is_alive(entity);
-            if is_alive && let Some(entity_info) = entity_registry.infos.get(entity) {
+            if is_alive && let Some(entity_info) = entity_registry.buildings.get(entity) {
                 self.entity_renderer.render(entity_info);
             }
         }

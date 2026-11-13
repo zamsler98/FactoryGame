@@ -5,7 +5,7 @@ use crate::Building;
 #[derive(Default)]
 pub struct EntityRegistry {
     allocator: EntityAllocator,
-    pub infos: EntitySparseSet<Building>,
+    pub buildings: EntitySparseSet<Building>,
 }
 
 impl EntityRegistry {
@@ -15,7 +15,7 @@ impl EntityRegistry {
 
     pub fn despawn(&mut self, entity: Entity) {
         self.allocator.despawn(entity);
-        self.infos.remove(entity);
+        self.buildings.remove(entity);
     }
 
     pub fn is_alive(&self, entity: Entity) -> bool {

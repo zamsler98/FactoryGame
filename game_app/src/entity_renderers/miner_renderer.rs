@@ -22,7 +22,7 @@ impl MinerRenderer {
 
 impl RenderEntity for MinerRenderer {
     fn render(&self, entity: &Building) {
-        let size = entity.entity_type.size();
+        let size = entity.building_type.size();
         let rect_w = (TILE_SIZE as f32) * size.x as f32;
         let rect_h = (TILE_SIZE as f32) * size.y as f32;
         let position = entity.position.world_origin();

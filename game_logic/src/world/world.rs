@@ -2,7 +2,7 @@ use crate::{
     Building, BuildingType, CHUNK_SIZE, GridCoords,
     world::{Chunk, ChunkCoords, entity_registry::EntityRegistry},
 };
-use game_core::{Entity, EntityAllocator, EntitySparseSet, Rectf, Vec2i};
+use game_core::{Entity, Rectf, Vec2i};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -22,7 +22,7 @@ impl World {
     pub fn remove_miner(&mut self, position: GridCoords) {
         let entity_option = self
             .entity_registry
-            .infos
+            .buildings
             .find_first(|x| x.position == position);
         if let Some((entity, _)) = entity_option {
             self.entity_registry.despawn(entity);
@@ -40,9 +40,9 @@ impl World {
         let entity = self.entity_registry.spawn();
         let entity_info = Building {
             position,
-            entity_type: BuildingType::Miner,
+            building_type: BuildingType::Miner,
         };
-        self.entity_registry.infos.insert(entity, entity_info);
+        self.entity_registry.buildings.insert(entity, entity_info);
         let chunk_coords = position.to_chunk_coords();
         let chunk = self
             .chunks

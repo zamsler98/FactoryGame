@@ -16,7 +16,7 @@ impl EntityRenderer {
     }
 
     pub fn render(&self, entity: &Building) {
-        match entity.entity_type {
+        match entity.building_type {
             BuildingType::Miner => self.miner.render(entity),
         }
     }

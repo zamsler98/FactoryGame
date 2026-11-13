@@ -1,7 +1,5 @@
 //! Distinct coordinate spaces and explicit conversions between them.
 
-use std::ops::Rem;
-
 use game_core::Vec2i;
 
 use super::{CHUNK_SIZE, CHUNK_TILES, TILE_SIZE};
