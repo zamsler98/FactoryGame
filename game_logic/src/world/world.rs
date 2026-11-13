@@ -66,10 +66,15 @@ impl World {
 
     fn check_tiles_occupied(&self, tiles: &[GridCoords]) -> bool {
         tiles.iter().any(|tile| {
-            self.chunks.get(&tile.to_chunk_coords()).is_some_and(|c| {
-                let entity = c.entity_on_tile(*tile);
-                entity.is_some_and(|e| self.entity_registry.is_alive(e))
-            })
+            let Some(chunk) = self.chunks.get(&tile.to_chunk_coords()) else {
+                return false;
+            };
+
+            let Some(entity) = chunk.entity_on_tile(*tile) else {
+                return false;
+            };
+
+            self.entity_registry.is_alive(entity)
         })
     }
 
