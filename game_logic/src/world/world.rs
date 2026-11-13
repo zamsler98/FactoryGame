@@ -2,7 +2,7 @@ use crate::{
     Building, BuildingType, CHUNK_SIZE, GridCoords,
     world::{Chunk, ChunkCoords, entity_registry::EntityRegistry},
 };
-use game_core::{EntityAllocator, EntitySparseSet, Rectf, Vec2i};
+use game_core::{Entity, EntityAllocator, EntitySparseSet, Rectf, Vec2i};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -29,12 +29,12 @@ impl World {
         }
     }
 
-    pub fn place_miner(&mut self, position: GridCoords) {
+    pub fn place_miner(&mut self, position: GridCoords) -> Option<Entity> {
         let size = BuildingType::Miner.size();
         log::debug!("Placing miner at {position:?}. Size of building: {size:?}");
         let tiles_to_check = Self::tiles_overlap_building(position, size);
         if self.check_tiles_occupied(&tiles_to_check) {
-            return;
+            return None;
         }
 
         let entity = self.entity_registry.spawn();
@@ -56,9 +56,10 @@ impl World {
                 tile_chunk.set_tile_entity(tile, entity);
             }
         }
+        Some(entity)
     }
 
-    pub fn is_space_occupied(&self, top_left: GridCoords, size: Vec2i) -> bool {
+    fn is_space_occupied(&self, top_left: GridCoords, size: Vec2i) -> bool {
         let tiles_to_check = Self::tiles_overlap_building(top_left, size);
         self.check_tiles_occupied(&tiles_to_check)
     }
@@ -117,5 +118,58 @@ impl World {
             }
         }
         chunks
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::CHUNK_TILES;
+
+    use super::*;
+
+    #[test]
+    fn empty_space_not_occupied() {
+        let world = World::new();
+        let position = GridCoords::new(2, 2);
+        let size = Vec2i::new(2, 2);
+        let is_occupied = world.is_space_occupied(position, size);
+        assert!(!is_occupied);
+    }
+
+    #[test]
+    fn empty_space_between_chunks_not_occupied() {
+        let world = World::new();
+        let position = GridCoords::new(CHUNK_TILES - 1, CHUNK_TILES - 1);
+        let size = Vec2i::new(2, 2);
+        let is_occupied = world.is_space_occupied(position, size);
+        assert!(!is_occupied);
+    }
+
+    #[test]
+    fn place_miner_marks_space_occupied() {
+        let mut world = World::new();
+        let position = GridCoords::new(2, 2);
+        let entity = world.place_miner(position);
+        assert!(entity.is_some());
+        let size = BuildingType::Miner.size();
+        let is_occupied = world.is_space_occupied(position, size);
+        assert!(is_occupied);
+        for i in 0..size.x {
+            for j in 0..size.y {
+                let tile_to_check = GridCoords::new(position.x + i, position.y + j);
+                let is_occupied = world.is_space_occupied(tile_to_check, Vec2i::new(1, 1));
+                assert!(is_occupied)
+            }
+        }
+    }
+
+    #[test]
+    fn place_miner_not_place_when_occupied() {
+        let mut world = World::new();
+        let position = GridCoords::new(2, 2);
+        world.place_miner(position);
+        let new_position = GridCoords::new(3, 3);
+        let entity = world.place_miner(new_position);
+        assert!(entity.is_none())
     }
 }
