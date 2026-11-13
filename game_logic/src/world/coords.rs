@@ -2,6 +2,8 @@
 
 use std::ops::Rem;
 
+use game_core::Vec2i;
+
 use super::{CHUNK_SIZE, CHUNK_TILES, TILE_SIZE};
 
 /// A position in whole world units.
@@ -59,8 +61,8 @@ impl GridCoords {
         WorldCoords::new(self.x * TILE_SIZE, self.y * TILE_SIZE)
     }
 
-    pub const fn local_in_chunk(self) -> GridCoords {
-        GridCoords::new(
+    pub const fn local_in_chunk(self) -> Vec2i {
+        Vec2i::new(
             self.x.rem_euclid(CHUNK_TILES),
             self.y.rem_euclid(CHUNK_TILES),
         )
