@@ -1,5 +1,5 @@
 use super::RenderEntity;
-use game_logic::{EntityInfo, TILE_SIZE};
+use game_logic::{Building, TILE_SIZE};
 use macroquad::{
     color::WHITE,
     math::vec2,
@@ -21,9 +21,10 @@ impl MinerRenderer {
 }
 
 impl RenderEntity for MinerRenderer {
-    fn render(&self, entity: &EntityInfo) {
-        let rect_w = TILE_SIZE as f32;
-        let rect_h = TILE_SIZE as f32;
+    fn render(&self, entity: &Building) {
+        let size = entity.building_type.size();
+        let rect_w = (TILE_SIZE as f32) * size.x as f32;
+        let rect_h = (TILE_SIZE as f32) * size.y as f32;
         let position = entity.position.world_origin();
         draw_texture_ex(
             &self.texture,

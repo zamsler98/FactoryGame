@@ -43,9 +43,11 @@ impl<T> Default for EntitySparseSet<T> {
 impl<T> EntitySparseSet<T> {
     /// Inserts `value` for `id`.
     ///
-    /// If the entity index is already occupied, its value and owning
-    /// generation are replaced.
-    pub fn insert(&mut self, id: Entity, value: T) {
+    /// Replaces an occupied index unless its stored generation is newer.
+    /// In that case, leaves the existing value unchanged and drops `value`.
+    ///
+    /// Returns `true` if `value` was stored, or `false` if it was dropped.
+    pub fn insert(&mut self, id: Entity, value: T) -> bool {
         let index = id.index() as usize;
         if index >= self.sparse.len() {
             self.sparse.resize(index + 1, EMPTY)
@@ -56,9 +58,13 @@ impl<T> EntitySparseSet<T> {
             self.owners.push(id);
         } else {
             let dense_index = self.sparse[index] as usize;
+            if self.owners[dense_index].generation() > id.generation() {
+                return false;
+            }
             self.dense[dense_index] = value;
             self.owners[dense_index] = id;
         }
+        true
     }
 
     /// Removes and returns the value owned by `id`.
@@ -84,14 +90,6 @@ impl<T> EntitySparseSet<T> {
     pub fn get(&self, id: Entity) -> Option<&T> {
         let dense_index = self.get_dense_index(id)?;
         self.dense.get(dense_index)
-    }
-
-    pub fn find_first(&self, mut predicate: impl FnMut(&T) -> bool) -> Option<(Entity, &T)> {
-        self.owners
-            .iter()
-            .zip(&self.dense)
-            .find(|(_, record)| predicate(record))
-            .map(|(entity, record)| (*entity, record))
     }
 
     fn get_dense_index(&self, id: Entity) -> Option<usize> {
@@ -120,7 +118,7 @@ mod tests {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = Entity::new(0, 0);
-        set.insert(id, to_store);
+        assert!(set.insert(id, to_store));
         let stored = set.get(id).expect("entity should be stored");
         assert_eq!(*stored, to_store);
     }
@@ -130,7 +128,7 @@ mod tests {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = Entity::new(10, 0);
-        set.insert(id, to_store);
+        assert!(set.insert(id, to_store));
         let stored = set.get(id).expect("entity should be stored");
         assert_eq!(*stored, to_store);
     }
@@ -140,8 +138,8 @@ mod tests {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = Entity::new(10, 0);
-        set.insert(id, 37);
-        set.insert(id, to_store);
+        assert!(set.insert(id, 37));
+        assert!(set.insert(id, to_store));
         let stored = set.get(id).expect("entity should be stored");
         assert_eq!(*stored, to_store);
     }
@@ -173,9 +171,9 @@ mod tests {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let id = Entity::new(10, 0);
         let to_store: u32 = 42;
-        set.insert(id, 32);
+        assert!(set.insert(id, 32));
         set.remove(id);
-        set.insert(id, to_store);
+        assert!(set.insert(id, to_store));
         let stored = set.get(id).expect("should return new stored value");
         assert_eq!(*stored, to_store);
     }
@@ -196,9 +194,23 @@ mod tests {
         let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
         let to_store: u32 = 42;
         let id = Entity::new(10, 0);
-        set.insert(id, 37);
+        assert!(set.insert(id, 37));
         let id2 = Entity::new(10, 1);
-        set.insert(id2, to_store);
+        assert!(set.insert(id2, to_store));
+        let get_from_id_1 = set.get(id);
+        assert_eq!(get_from_id_1, None);
+        let get_from_id_2 = set.get(id2).expect("id2 should have result stored");
+        assert_eq!(*get_from_id_2, to_store);
+    }
+
+    #[test]
+    fn insert_old_gen_does_not_replace() {
+        let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
+        let to_store: u32 = 42;
+        let id = Entity::new(10, 0);
+        let id2 = Entity::new(10, 1);
+        assert!(set.insert(id2, to_store));
+        assert!(!set.insert(id, 37));
         let get_from_id_1 = set.get(id);
         assert_eq!(get_from_id_1, None);
         let get_from_id_2 = set.get(id2).expect("id2 should have result stored");

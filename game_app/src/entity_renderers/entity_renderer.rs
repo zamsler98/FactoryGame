@@ -1,6 +1,6 @@
 use super::RenderEntity;
 use super::miner_renderer::MinerRenderer;
-use game_logic::{EntityInfo, EntityType};
+use game_logic::{Building, BuildingType};
 
 /// Owns one renderer per entity type and dispatches each entity to the right one.
 /// Renderers are shared across every entity of their type so a texture is loaded once.
@@ -15,9 +15,9 @@ impl EntityRenderer {
         }
     }
 
-    pub fn render(&self, entity: &EntityInfo) {
-        match entity.entity_type {
-            EntityType::Miner => self.miner.render(entity),
+    pub fn render(&self, entity: &Building) {
+        match entity.building_type {
+            BuildingType::Miner => self.miner.render(entity),
         }
     }
 }

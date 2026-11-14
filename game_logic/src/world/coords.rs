@@ -1,5 +1,7 @@
 //! Distinct coordinate spaces and explicit conversions between them.
 
+use game_core::Vec2i;
+
 use super::{CHUNK_SIZE, CHUNK_TILES, TILE_SIZE};
 
 /// A position in whole world units.
@@ -55,6 +57,13 @@ impl GridCoords {
     /// The world position of this tile's top-left corner.
     pub const fn world_origin(self) -> WorldCoords {
         WorldCoords::new(self.x * TILE_SIZE, self.y * TILE_SIZE)
+    }
+
+    pub const fn local_in_chunk(self) -> Vec2i {
+        Vec2i::new(
+            self.x.rem_euclid(CHUNK_TILES),
+            self.y.rem_euclid(CHUNK_TILES),
+        )
     }
 }
 
