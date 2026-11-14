@@ -31,8 +31,7 @@ impl World {
     pub fn place_miner(&mut self, position: GridCoords) -> Option<Entity> {
         let size = BuildingType::Miner.size();
         log::debug!("Placing miner at {position:?}. Size of building: {size:?}");
-        let tiles_to_check = Self::tiles_overlap_building(position, size);
-        if self.check_tiles_occupied(&tiles_to_check) {
+        if self.check_tiles_occupied(Self::tiles_overlap_building(position, size)) {
             return None;
         }
 
@@ -49,7 +48,7 @@ impl World {
             .or_insert_with(|| Chunk::new(chunk_coords));
 
         chunk.add_entity(entity);
-        for tile in tiles_to_check {
+        for tile in Self::tiles_overlap_building(position, size) {
             let chunk_coords = tile.to_chunk_coords();
             if let Some(tile_chunk) = self.chunks.get_mut(&chunk_coords) {
                 tile_chunk.set_tile_entity(tile, entity);
@@ -59,17 +58,16 @@ impl World {
     }
 
     pub fn is_tile_occupied(&self, tile: GridCoords) -> bool {
-        let tiles = [tile];
-        self.check_tiles_occupied(&tiles)
+        self.check_tiles_occupied([tile])
     }
 
-    fn check_tiles_occupied(&self, tiles: &[GridCoords]) -> bool {
-        tiles.iter().any(|tile| {
+    fn check_tiles_occupied(&self, tiles: impl IntoIterator<Item = GridCoords>) -> bool {
+        tiles.into_iter().any(|tile| {
             let Some(chunk) = self.chunks.get(&tile.to_chunk_coords()) else {
                 return false;
             };
 
-            let Some(entity) = chunk.entity_on_tile(*tile) else {
+            let Some(entity) = chunk.entity_on_tile(tile) else {
                 return false;
             };
 
@@ -77,15 +75,13 @@ impl World {
         })
     }
 
-    fn tiles_overlap_building(top_left: GridCoords, size: Vec2i) -> Vec<GridCoords> {
-        let mut res: Vec<GridCoords> = Vec::new();
-        for i in top_left.x..(top_left.x + size.x) {
-            for j in top_left.y..(top_left.y + size.y) {
-                let tile_position = GridCoords::new(i, j);
-                res.push(tile_position);
-            }
-        }
-        res
+    fn tiles_overlap_building(
+        top_left: GridCoords,
+        size: Vec2i,
+    ) -> impl Iterator<Item = GridCoords> {
+        (top_left.x..top_left.x + size.x).flat_map(move |x| {
+            (top_left.y..top_left.y + size.y).map(move |y| GridCoords::new(x, y))
+        })
     }
 
     pub fn create_chunks_in_rect(&mut self, rect: Rectf) {
