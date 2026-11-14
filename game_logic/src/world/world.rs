@@ -20,11 +20,10 @@ impl World {
     }
 
     pub fn remove_miner(&mut self, position: GridCoords) {
-        let entity_option = self
-            .entity_registry
-            .buildings
-            .find_first(|x| x.position == position);
-        if let Some((entity, _)) = entity_option {
+        let Some(chunk) = self.chunks.get(&position.to_chunk_coords()) else {
+            return;
+        };
+        if let Some(entity) = chunk.entity_on_tile(position) {
             self.entity_registry.despawn(entity);
         }
     }
