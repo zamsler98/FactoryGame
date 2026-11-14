@@ -1,13 +1,16 @@
 //! game_logic: processes inputs, game rules, and building placement.
 //! Depends on `game_core` only. It exposes an `InputFrame`.
 
+mod entity_components;
 mod world;
 
 pub use game_core::{Rect, Rectf, Recti, Vec2, Vec2f, Vec2i};
 pub use world::{
-    CHUNK_SIZE, CHUNK_TILES, Chunk, ChunkCoords, EntityInfo, EntityType, GridCoords, TILE_SIZE,
-    World, WorldCoords,
+    CHUNK_SIZE, CHUNK_TILES, Chunk, ChunkCoords, EntityRegistry, GridCoords, TILE_SIZE, World,
+    WorldCoords,
 };
+
+pub use entity_components::{Building, BuildingType};
 
 /// `InputFrame` is the platform-agnostic input snapshot.
 /// The platform layer (`game_app`) fills this each frame and passes to logic.

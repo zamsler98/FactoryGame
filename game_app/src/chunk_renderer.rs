@@ -1,5 +1,5 @@
 // use crate::entity_renderers::EntityRenderer;
-use game_logic::{CHUNK_SIZE, CHUNK_TILES, Chunk, TILE_SIZE, World};
+use game_logic::{CHUNK_SIZE, CHUNK_TILES, Chunk, EntityRegistry, TILE_SIZE};
 use macroquad::{color::WHITE, shapes::draw_rectangle_lines, text::draw_text};
 
 use crate::entity_renderers::EntityRenderer;
@@ -25,7 +25,7 @@ impl ChunkRenderer {
         }
     }
 
-    pub fn render(&self, chunk: &Chunk, world: &World) {
+    pub fn render(&self, chunk: &Chunk, entity_registry: &EntityRegistry) {
         // Chunk coords are chunk indices, so scale them up to the world origin.
         let origin = chunk.coords.world_origin();
         let origin_x = origin.x as f32;
@@ -58,8 +58,8 @@ impl ChunkRenderer {
         draw_text(&s, origin_x, origin_y + 10.0, 16.0, WHITE);
 
         for &entity in &chunk.entities {
-            let maybe_entity_info = world.entity_infos.get(entity);
-            if let Some(entity_info) = maybe_entity_info {
+            let is_alive = entity_registry.is_alive(entity);
+            if is_alive && let Some(entity_info) = entity_registry.buildings.get(entity) {
                 self.entity_renderer.render(entity_info);
             }
         }

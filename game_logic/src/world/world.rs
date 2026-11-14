@@ -1,41 +1,48 @@
 use crate::{
-    CHUNK_SIZE, EntityInfo, EntityType, GridCoords,
-    world::{Chunk, ChunkCoords},
+    Building, BuildingType, CHUNK_SIZE, GridCoords,
+    world::{Chunk, ChunkCoords, entity_registry::EntityRegistry},
 };
-use game_core::{EntityAllocator, EntitySparseSet, Rectf};
+use game_core::{Entity, Rectf, Vec2i};
 use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct World {
     chunks: HashMap<ChunkCoords, Chunk>,
-    pub entity_allocator: EntityAllocator,
-    pub entity_infos: EntitySparseSet<EntityInfo>,
+    pub entity_registry: EntityRegistry,
 }
 
 impl World {
     pub fn new() -> Self {
         Self {
             chunks: HashMap::new(),
-            entity_allocator: EntityAllocator::default(),
-            entity_infos: EntitySparseSet::default(),
+            entity_registry: EntityRegistry::default(),
         }
     }
 
     pub fn remove_miner(&mut self, position: GridCoords) {
-        let entity_option = self.entity_infos.find_first(|x| x.position == position);
+        let entity_option = self
+            .entity_registry
+            .buildings
+            .find_first(|x| x.position == position);
         if let Some((entity, _)) = entity_option {
-            self.entity_allocator.despawn(entity);
-            self.entity_infos.remove(entity);
+            self.entity_registry.despawn(entity);
         }
     }
 
-    pub fn place_miner(&mut self, position: GridCoords) {
-        let entity = self.entity_allocator.spawn();
-        let entity_info = EntityInfo {
+    pub fn place_miner(&mut self, position: GridCoords) -> Option<Entity> {
+        let size = BuildingType::Miner.size();
+        log::debug!("Placing miner at {position:?}. Size of building: {size:?}");
+        let tiles_to_check = Self::tiles_overlap_building(position, size);
+        if self.check_tiles_occupied(&tiles_to_check) {
+            return None;
+        }
+
+        let entity = self.entity_registry.spawn();
+        let entity_info = Building {
             position,
-            entity_type: EntityType::Miner,
+            building_type: BuildingType::Miner,
         };
-        self.entity_infos.insert(entity, entity_info);
+        self.entity_registry.buildings.insert(entity, entity_info);
         let chunk_coords = position.to_chunk_coords();
         let chunk = self
             .chunks
@@ -43,6 +50,43 @@ impl World {
             .or_insert_with(|| Chunk::new(chunk_coords));
 
         chunk.add_entity(entity);
+        for tile in tiles_to_check {
+            let chunk_coords = tile.to_chunk_coords();
+            if let Some(tile_chunk) = self.chunks.get_mut(&chunk_coords) {
+                tile_chunk.set_tile_entity(tile, entity);
+            }
+        }
+        Some(entity)
+    }
+
+    pub fn is_tile_occupied(&self, tile: GridCoords) -> bool {
+        let tiles = [tile];
+        self.check_tiles_occupied(&tiles)
+    }
+
+    fn check_tiles_occupied(&self, tiles: &[GridCoords]) -> bool {
+        tiles.iter().any(|tile| {
+            let Some(chunk) = self.chunks.get(&tile.to_chunk_coords()) else {
+                return false;
+            };
+
+            let Some(entity) = chunk.entity_on_tile(*tile) else {
+                return false;
+            };
+
+            self.entity_registry.is_alive(entity)
+        })
+    }
+
+    fn tiles_overlap_building(top_left: GridCoords, size: Vec2i) -> Vec<GridCoords> {
+        let mut res: Vec<GridCoords> = Vec::new();
+        for i in top_left.x..(top_left.x + size.x) {
+            for j in top_left.y..(top_left.y + size.y) {
+                let tile_position = GridCoords::new(i, j);
+                res.push(tile_position);
+            }
+        }
+        res
     }
 
     pub fn create_chunks_in_rect(&mut self, rect: Rectf) {
@@ -80,5 +124,64 @@ impl World {
             }
         }
         chunks
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::CHUNK_TILES;
+
+    use super::*;
+
+    #[test]
+    fn empty_space_not_occupied() {
+        let world = World::new();
+        let position = GridCoords::new(2, 2);
+        let is_occupied = world.is_tile_occupied(position);
+        assert!(!is_occupied);
+    }
+
+    #[test]
+    fn empty_space_between_chunks_not_occupied() {
+        let world = World::new();
+        let position = GridCoords::new(CHUNK_TILES - 1, CHUNK_TILES - 1);
+        let is_occupied = world.is_tile_occupied(position);
+        assert!(!is_occupied);
+    }
+
+    #[test]
+    fn place_miner_marks_space_occupied() {
+        let mut world = World::new();
+        let position = GridCoords::new(2, 2);
+        let entity = world.place_miner(position);
+        assert!(entity.is_some());
+        let size = BuildingType::Miner.size();
+        for i in 0..size.x {
+            for j in 0..size.y {
+                let tile_to_check = GridCoords::new(position.x + i, position.y + j);
+                let is_occupied = world.is_tile_occupied(tile_to_check);
+                assert!(is_occupied)
+            }
+        }
+    }
+
+    #[test]
+    fn place_miner_not_place_when_occupied() {
+        let mut world = World::new();
+        let position = GridCoords::new(2, 2);
+        world.place_miner(position);
+        let new_position = GridCoords::new(3, 3);
+        let entity = world.place_miner(new_position);
+        assert!(entity.is_none())
+    }
+
+    #[test]
+    fn remove_miner_frees_space() {
+        let mut world = World::new();
+        let position = GridCoords::new(2, 2);
+        world.place_miner(position);
+        world.remove_miner(position);
+        let is_occupied = world.is_tile_occupied(position);
+        assert!(!is_occupied)
     }
 }

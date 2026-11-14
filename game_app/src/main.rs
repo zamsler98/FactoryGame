@@ -35,7 +35,7 @@ async fn main() {
         world.create_chunks_in_rect(bounds);
         let chunks = world.chunks_overlapping_rect(bounds);
         for chunk in &chunks {
-            chunk_renderer.render(chunk, &world);
+            chunk_renderer.render(chunk, &world.entity_registry);
         }
 
         // let w = 15.0;
@@ -81,7 +81,11 @@ async fn main() {
             if let Some(prev) = prev_mouse_position {
                 main_camera.pan(prev - mouse);
             } else {
-                world.place_miner(grid_coords);
+                if world.is_tile_occupied(grid_coords) {
+                    world.remove_miner(grid_coords);
+                } else {
+                    world.place_miner(grid_coords);
+                }
             }
             prev_mouse_position = Some(mouse);
         } else {
