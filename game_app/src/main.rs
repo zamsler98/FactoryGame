@@ -11,11 +11,13 @@ use macroquad::prelude::*;
 
 mod chunk_renderer;
 mod entity_renderers;
+mod fps_counter;
 mod macroquad_logger;
 mod main_camera;
 mod math_interop;
 
 use chunk_renderer::ChunkRenderer;
+use fps_counter::FpsCounter;
 use main_camera::MainCamera;
 
 #[macroquad::main("FactoryGame - Macroquad")]
@@ -26,6 +28,7 @@ async fn main() {
     let mut prev_mouse_position: Option<Vec2f> = None;
     let mut main_camera = MainCamera::default();
     let mut world = World::new();
+    let mut fps_counter = FpsCounter::default();
 
     loop {
         clear_background(BLACK);
@@ -106,6 +109,9 @@ async fn main() {
         // let y_chunk = y / (CHUNK_TILES * TILE_SIZE) as f32;
         // log::debug!("Camera bounds ({x},{y}). Chunk coords: ({x_chunk}, {y_chunk})");
 
+        fps_counter.update(get_frame_time());
+        set_default_camera();
+        fps_counter.draw();
         next_frame().await;
     }
 }
