@@ -2,6 +2,7 @@
 //! Depends on `game_core` only. It exposes an `InputFrame`.
 
 mod entity_components;
+mod fixed_timestep;
 mod world;
 
 pub use game_core::{Rect, Rectf, Recti, Vec2, Vec2f, Vec2i};
@@ -11,6 +12,7 @@ pub use world::{
 };
 
 pub use entity_components::{Building, BuildingType};
+pub use fixed_timestep::{FixedTimestep, TICKS_PER_SECOND};
 
 /// `InputFrame` is the platform-agnostic input snapshot.
 /// The platform layer (`game_app`) fills this each frame and passes to logic.

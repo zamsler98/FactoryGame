@@ -6,19 +6,19 @@
 //!
 
 use game_core::Vec2f;
-use game_logic::World;
+use game_logic::{FixedTimestep, TICKS_PER_SECOND, World};
 use macroquad::prelude::*;
 
 mod chunk_renderer;
 mod entity_renderers;
-mod fps_counter;
 mod macroquad_logger;
 mod main_camera;
 mod math_interop;
+mod rate_counter;
 
 use chunk_renderer::ChunkRenderer;
-use fps_counter::FpsCounter;
 use main_camera::MainCamera;
+use rate_counter::RateCounter;
 
 #[macroquad::main("FactoryGame - Macroquad")]
 async fn main() {
@@ -28,9 +28,17 @@ async fn main() {
     let mut prev_mouse_position: Option<Vec2f> = None;
     let mut main_camera = MainCamera::default();
     let mut world = World::new();
-    let mut fps_counter = FpsCounter::default();
+    let mut fps_counter = RateCounter::new("FPS", 20.0);
+    let mut ups_counter = RateCounter::new("UPS", 40.0);
+    let mut timestep = FixedTimestep::new(TICKS_PER_SECOND);
 
     loop {
+        let frame_dt = get_frame_time();
+        let ticks = timestep.advance(frame_dt as f64);
+        for _ in 0..ticks {
+            world.tick();
+        }
+
         clear_background(BLACK);
 
         main_camera.use_camera();
@@ -109,9 +117,11 @@ async fn main() {
         // let y_chunk = y / (CHUNK_TILES * TILE_SIZE) as f32;
         // log::debug!("Camera bounds ({x},{y}). Chunk coords: ({x_chunk}, {y_chunk})");
 
-        fps_counter.update(get_frame_time());
+        fps_counter.update(frame_dt, 1);
+        ups_counter.update(frame_dt, ticks);
         set_default_camera();
         fps_counter.draw();
+        ups_counter.draw();
         next_frame().await;
     }
 }

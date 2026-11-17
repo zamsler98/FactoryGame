@@ -9,6 +9,7 @@ use std::collections::HashMap;
 pub struct World {
     chunks: HashMap<ChunkCoords, Chunk>,
     pub entity_registry: EntityRegistry,
+    tick: u64,
 }
 
 impl World {
@@ -16,7 +17,18 @@ impl World {
         Self {
             chunks: HashMap::new(),
             entity_registry: EntityRegistry::default(),
+            tick: 0,
         }
+    }
+
+    /// Advances the simulation by one fixed tick. No game rules yet.
+    pub fn tick(&mut self) {
+        self.tick += 1;
+    }
+
+    /// Number of ticks simulated since the world was created.
+    pub fn tick_count(&self) -> u64 {
+        self.tick
     }
 
     pub fn remove_miner(&mut self, position: GridCoords) {
@@ -178,5 +190,15 @@ mod tests {
         world.remove_miner(position);
         let is_occupied = world.is_tile_occupied(position);
         assert!(!is_occupied)
+    }
+
+    #[test]
+    fn tick_increments_tick_count() {
+        let mut world = World::new();
+        assert_eq!(world.tick_count(), 0);
+        world.tick();
+        world.tick();
+        world.tick();
+        assert_eq!(world.tick_count(), 3);
     }
 }
