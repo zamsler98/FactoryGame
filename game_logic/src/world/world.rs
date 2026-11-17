@@ -1,5 +1,6 @@
 use crate::{
     Building, BuildingType, CHUNK_SIZE, GridCoords,
+    entity_components::Miner,
     world::{Chunk, ChunkCoords, entity_registry::EntityRegistry},
 };
 use game_core::{Entity, Rectf, Vec2i};
@@ -24,6 +25,9 @@ impl World {
     /// Advances the simulation by one fixed tick. No game rules yet.
     pub fn tick(&mut self) {
         self.tick += 1;
+        for miner in self.entity_registry.miners.iter_mut() {
+            miner.update(self.tick);
+        }
     }
 
     /// Number of ticks simulated since the world was created.
@@ -53,6 +57,9 @@ impl World {
             building_type: BuildingType::Miner,
         };
         self.entity_registry.buildings.insert(entity, entity_info);
+        self.entity_registry
+            .miners
+            .insert(entity, Miner::new(self.tick));
         let chunk_coords = position.to_chunk_coords();
         let chunk = self
             .chunks

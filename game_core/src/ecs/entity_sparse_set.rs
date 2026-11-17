@@ -92,6 +92,10 @@ impl<T> EntitySparseSet<T> {
         self.dense.get(dense_index)
     }
 
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.dense.iter_mut()
+    }
+
     fn get_dense_index(&self, id: Entity) -> Option<usize> {
         let dense_index = *self.sparse.get(id.index() as usize)?;
         if dense_index == EMPTY {
