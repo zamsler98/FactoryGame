@@ -2,7 +2,7 @@ use super::RenderEntity;
 use game_core::Entity;
 use game_logic::{EntityRegistry, TILE_SIZE};
 use macroquad::{
-    color::{WHITE, YELLOW},
+    color::{BLACK, WHITE},
     math::vec2,
     shapes::{draw_circle, draw_circle_lines},
     texture::{DrawTextureParams, FilterMode, Texture2D, draw_texture_ex, load_texture},
@@ -58,9 +58,9 @@ impl RenderEntity for MinerRenderer {
             for i in 0..capacity {
                 let x = first_x + i as f32 * DOT_SPACING;
                 if i < inventory.num_items() {
-                    draw_circle(x, y, DOT_RADIUS, YELLOW);
+                    draw_circle(x, y, DOT_RADIUS, BLACK);
                 } else {
-                    draw_circle_lines(x, y, DOT_RADIUS, DOT_OUTLINE_THICKNESS, WHITE);
+                    draw_circle_lines(x, y, DOT_RADIUS, DOT_OUTLINE_THICKNESS, BLACK);
                 }
             }
         }
