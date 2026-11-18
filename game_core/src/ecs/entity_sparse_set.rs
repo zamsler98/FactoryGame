@@ -92,8 +92,13 @@ impl<T> EntitySparseSet<T> {
         self.dense.get(dense_index)
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
-        self.dense.iter_mut()
+    pub fn get_mut(&mut self, id: Entity) -> Option<&mut T> {
+        let dense_index = self.get_dense_index(id)?;
+        self.dense.get_mut(dense_index)
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (Entity, &mut T)> {
+        self.owners.iter().copied().zip(self.dense.iter_mut())
     }
 
     fn get_dense_index(&self, id: Entity) -> Option<usize> {
@@ -261,5 +266,37 @@ mod tests {
         assert_eq!(value, None);
         let stored = set.get(id).expect("value should be returned");
         assert_eq!(*stored, to_store)
+    }
+
+    #[test]
+    fn get_mut_modifies_value() {
+        let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
+        let id = Entity::new(0, 0);
+        set.insert(id, 1);
+        let value = set.get_mut(id).expect("value should be returned");
+        *value = 2;
+        assert_eq!(set.get(id), Some(&2));
+    }
+
+    #[test]
+    fn get_mut_stale_generation_returns_none() {
+        let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
+        let id = Entity::new(0, 0);
+        let id2 = Entity::new(0, 1);
+        set.insert(id, 42);
+        assert_eq!(set.get_mut(id2), None);
+    }
+
+    #[test]
+    fn iter_mut_yields_owner() {
+        let mut set: EntitySparseSet<u32> = EntitySparseSet::default();
+        let id = Entity::new(0, 0);
+        let id2 = Entity::new(1, 0);
+        set.insert(id, 37);
+        set.insert(id2, 42);
+        let pairs: Vec<(Entity, u32)> = set.iter_mut().map(|(e, v)| (e, *v)).collect();
+        assert_eq!(pairs.len(), 2);
+        assert!(pairs.contains(&(id, 37)));
+        assert!(pairs.contains(&(id2, 42)));
     }
 }

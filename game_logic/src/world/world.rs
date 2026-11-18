@@ -1,6 +1,7 @@
 use crate::{
-    Building, BuildingType, CHUNK_SIZE, GridCoords,
-    entity_components::Miner,
+    Building, BuildingType, CHUNK_SIZE, GridCoords, Inventory,
+    entity_components::{MINER_INVENTORY_CAPACITY, Miner},
+    systems::mining_system,
     world::{Chunk, ChunkCoords, entity_registry::EntityRegistry},
 };
 use game_core::{Entity, Rectf, Vec2i};
@@ -22,12 +23,10 @@ impl World {
         }
     }
 
-    /// Advances the simulation by one fixed tick. No game rules yet.
+    /// Advances the simulation by one fixed tick.
     pub fn tick(&mut self) {
         self.tick += 1;
-        for miner in self.entity_registry.miners.iter_mut() {
-            miner.update(self.tick);
-        }
+        mining_system(&mut self.entity_registry, self.tick);
     }
 
     /// Number of ticks simulated since the world was created.
@@ -60,6 +59,9 @@ impl World {
         self.entity_registry
             .miners
             .insert(entity, Miner::new(self.tick));
+        self.entity_registry
+            .inventories
+            .insert(entity, Inventory::new(MINER_INVENTORY_CAPACITY));
         let chunk_coords = position.to_chunk_coords();
         let chunk = self
             .chunks
@@ -143,7 +145,7 @@ impl World {
 
 #[cfg(test)]
 mod tests {
-    use crate::CHUNK_TILES;
+    use crate::{CHUNK_TILES, TICKS_TO_MINE};
 
     use super::*;
 
@@ -216,5 +218,55 @@ mod tests {
         world.tick();
         world.tick();
         assert_eq!(world.tick_count(), 3);
+    }
+
+    #[test]
+    fn miner_mines_one_item_after_ticks_to_mine() {
+        let mut world = World::new();
+        let entity = world
+            .place_miner(GridCoords::new(2, 2))
+            .expect("miner should be placed");
+        for _ in 0..TICKS_TO_MINE - 1 {
+            world.tick();
+        }
+        let inventory = world
+            .entity_registry
+            .inventories
+            .get(entity)
+            .expect("miner should have an inventory");
+        assert_eq!(inventory.num_items(), 0);
+        world.tick();
+        let inventory = world
+            .entity_registry
+            .inventories
+            .get(entity)
+            .expect("miner should have an inventory");
+        assert_eq!(inventory.num_items(), 1);
+    }
+
+    #[test]
+    fn miner_stops_at_inventory_capacity() {
+        let mut world = World::new();
+        let entity = world
+            .place_miner(GridCoords::new(2, 2))
+            .expect("miner should be placed");
+        for _ in 0..TICKS_TO_MINE * (MINER_INVENTORY_CAPACITY as u64 + 2) {
+            world.tick();
+        }
+        let inventory = world
+            .entity_registry
+            .inventories
+            .get(entity)
+            .expect("miner should have an inventory");
+        assert_eq!(inventory.num_items(), MINER_INVENTORY_CAPACITY);
+    }
+
+    #[test]
+    fn remove_miner_removes_inventory_component() {
+        let mut world = World::new();
+        let position = GridCoords::new(2, 2);
+        let entity = world.place_miner(position).expect("miner should be placed");
+        world.remove_miner(position);
+        assert!(world.entity_registry.inventories.get(entity).is_none());
     }
 }

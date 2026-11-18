@@ -3,6 +3,7 @@
 
 mod entity_components;
 mod fixed_timestep;
+mod systems;
 mod world;
 
 pub use game_core::{Rect, Rectf, Recti, Vec2, Vec2f, Vec2i};
@@ -11,7 +12,9 @@ pub use world::{
     WorldCoords,
 };
 
-pub use entity_components::{Building, BuildingType};
+pub use entity_components::{
+    Building, BuildingType, Inventory, MINER_INVENTORY_CAPACITY, TICKS_TO_MINE,
+};
 pub use fixed_timestep::{FixedTimestep, TICKS_PER_SECOND};
 
 /// `InputFrame` is the platform-agnostic input snapshot.
