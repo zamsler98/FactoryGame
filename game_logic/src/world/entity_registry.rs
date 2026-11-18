@@ -17,6 +17,7 @@ impl EntityRegistry {
     pub fn despawn(&mut self, entity: Entity) {
         self.allocator.despawn(entity);
         self.buildings.remove(entity);
+        self.miners.remove(entity);
     }
 
     pub fn is_alive(&self, entity: Entity) -> bool {

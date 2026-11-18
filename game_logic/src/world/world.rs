@@ -200,6 +200,15 @@ mod tests {
     }
 
     #[test]
+    fn remove_miner_removes_miner_component() {
+        let mut world = World::new();
+        let position = GridCoords::new(2, 2);
+        let entity = world.place_miner(position).unwrap();
+        world.remove_miner(position);
+        assert!(world.entity_registry.miners.get(entity).is_none());
+    }
+
+    #[test]
     fn tick_increments_tick_count() {
         let mut world = World::new();
         assert_eq!(world.tick_count(), 0);
