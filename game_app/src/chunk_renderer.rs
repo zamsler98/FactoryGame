@@ -58,9 +58,7 @@ impl ChunkRenderer {
         draw_text(&s, origin_x, origin_y + 10.0, 16.0, WHITE);
 
         for &entity in &chunk.entities {
-            if let Some(entity_info) = entity_registry.buildings.get(entity) {
-                self.entity_renderer.render(entity_info);
-            }
+            self.entity_renderer.render(entity, entity_registry);
         }
     }
 }
